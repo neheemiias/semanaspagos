@@ -225,15 +225,15 @@ let gastos = JSON.parse(localStorage.getItem("gastos")) || [];
 let ventasFinalizadas = JSON.parse(localStorage.getItem("ventasFinalizadas")) || [];
 let pedidos = JSON.parse(localStorage.getItem("pedidos")) || [];
 
-// PORCENTAJES GLOBALES
-let porcentajes = JSON.parse(localStorage.getItem("porcentajes")) || {
-    contado: 20, 
-    sem4: 45,
-    sem6: 60,
-    sem8: 75,
-    sem10: 90,
-    sem12: 100
-};
+// OPCIONES DE PAGO Y PORCENTAJES DINÁMICOS
+let opcionesPago = JSON.parse(localStorage.getItem("opcionesPago")) || [
+    { semanas: 1, porc: 20 }, // 1 semana = Cuota única
+    { semanas: 4, porc: 45 },
+    { semanas: 6, porc: 60 },
+    { semanas: 8, porc: 75 },
+    { semanas: 10, porc: 90 },
+    { semanas: 12, porc: 100 }
+];
 
 let clienteEditando = -1;
 let filaSeleccionada = null;
@@ -244,12 +244,10 @@ let pedidoSeleccionadoId = null;
 let temporizadorPedido;
 
 // ---------- MIGRACIÓN INICIAL ----------
-// Aseguramos que los clientes tengan ID y su pedido correspondiente
 function migrarDatos() {
     let clientesActualizados = false;
     let pedidosActualizados = false;
 
-    // 1. Asignar ID a clientes antiguos
     clientes.forEach(c => {
         if (!c.id) {
             c.id = generarId();
@@ -257,7 +255,6 @@ function migrarDatos() {
         }
     });
 
-    // 2. Crear pedidos SOLO la primera vez (evita revivir pedidos eliminados)
     if (!localStorage.getItem("migracionPedidosV2Hecha")) {
         clientes.forEach(c => {
             let pedidoExiste = pedidos.find(p => p.clienteId === c.id);
@@ -272,7 +269,6 @@ function migrarDatos() {
                 pedidosActualizados = true;
             }
         });
-        // Guardar bandera para que no se vuelva a ejecutar
         localStorage.setItem("migracionPedidosV2Hecha", "true");
     }
 
@@ -311,7 +307,7 @@ function cambiar(seccion, boton) {
             <div class="presupuesto">
                 <h2>Presupuesto</h2>
                 <button class="btn-config" onclick="cambiar('configurarPorcentajes')">
-                    <i class="material-icons-round">tune</i> Configurar porcentajes
+                    <i class="material-icons-round">tune</i> Configurar semanas y porcentajes
                 </button>
 
                 <label>Nombre del producto</label>
@@ -332,16 +328,11 @@ function cambiar(seccion, boton) {
                 
                 <label>Hasta</label>
                 <select id="tope">
-                    <option value="4">4 semanas</option>
-                    <option value="6">6 semanas</option>
-                    <option value="8">8 semanas</option>
-                    <option value="10">10 semanas</option>
-                    <option value="12" selected>12 semanas</option>
                 </select>
                 
                 <div class="check">
                     <input type="checkbox" id="mostrarContado">
-                    <label for="mostrarContado">Mostrar precio de contado</label>
+                    <label for="mostrarContado">Mostrar precio de contado / Cuota única</label>
                 </div>
                 
                 <div class="botones">
@@ -365,35 +356,25 @@ function cambiar(seccion, boton) {
                 </div>
             </div>
         </div>`;
+        actualizarTope();
     }
 
     if (seccion == "configurarPorcentajes") {
         contenido.innerHTML = `
         <div class="full-screen agregar">
-            <h2>Configurar Porcentajes</h2>
-            <p class="subtitulo">Ajustá los recargos (%) sobre el costo para cada opción de pago.</p>
+            <h2>Configurar Opciones de Pago</h2>
+            <p class="subtitulo">Ajustá la cantidad de semanas y sus recargos (%) sobre el costo.</p>
             
-            <label>Precio de Contado (%)</label>
-            <input type="number" id="porcContado" value="${porcentajes.contado}" placeholder="Ej: 20">
+            <div id="contenedorOpcionesPago"></div>
             
-            <label>4 Semanas / 2 Quincenas (%)</label>
-            <input type="number" id="porc4" value="${porcentajes.sem4}" placeholder="Ej: 45">
+            <button class="btn-config" onclick="agregarOpcionPago()" style="margin-top:15px; background:#e2e8f0;">
+                <i class="material-icons-round">add</i> Añadir Opción de Pago
+            </button>
             
-            <label>6 Semanas / 3 Quincenas (%)</label>
-            <input type="number" id="porc6" value="${porcentajes.sem6}" placeholder="Ej: 60">
-            
-            <label>8 Semanas / 4 Quincenas (%)</label>
-            <input type="number" id="porc8" value="${porcentajes.sem8}" placeholder="Ej: 75">
-            
-            <label>10 Semanas / 5 Quincenas (%)</label>
-            <input type="number" id="porc10" value="${porcentajes.sem10}" placeholder="Ej: 90">
-            
-            <label>12 Semanas / 6 Quincenas (%)</label>
-            <input type="number" id="porc12" value="${porcentajes.sem12}" placeholder="Ej: 100">
-            
-            <button class="guardarCliente" onclick="guardarPorcentajes()">Guardar Porcentajes</button>
+            <button class="guardarCliente" onclick="guardarPorcentajes()">Guardar Configuración</button>
             <button class="cancelarCliente" onclick="cambiar('presupuesto')">Cancelar</button>
         </div>`;
+        renderFilasConfigPorcentajes();
     }
 
     if (seccion == "semana") {
@@ -485,6 +466,11 @@ function cambiar(seccion, boton) {
     }
 
     if (seccion == "agregarCliente") {
+        let opcionesSemanasHTML = opcionesPago.map(op => {
+            let label = op.semanas === 1 ? 'Cuota única (1 pago)' : `${op.semanas} semanas`;
+            return `<option value="${op.semanas}">${label}</option>`;
+        }).join('');
+
         contenido.innerHTML = `
         <div class="full-screen agregar">
             <h2>${clienteEditando == -1 ? 'Agregar' : 'Editar'} Cliente</h2>
@@ -504,13 +490,9 @@ function cambiar(seccion, boton) {
             <label>Costo del producto (Lo que te costó)</label>
             <input type="number" id="costoCliente" placeholder="$">
             
-            <label>Cantidad de semanas</label>
+            <label>Modalidad de semanas</label>
             <select id="semanasCliente">
-                <option value="4">4 semanas</option>
-                <option value="6">6 semanas</option>
-                <option value="8">8 semanas</option>
-                <option value="10">10 semanas</option>
-                <option value="12">12 semanas</option>
+                ${opcionesSemanasHTML}
             </select>
             
             <label>Valor de cuota</label>
@@ -524,7 +506,6 @@ function cambiar(seccion, boton) {
         </div>`;
     }
 
-    // AUNQUE NO SE VEA EN EL MENÚ INFERIOR, MANTENEMOS LA SECCIÓN REGISTRO INTACTA POR SI SE LLAMA
     if (seccion == "registro") {
         let ingresosTotales = clientes.reduce((acc, c) => acc + (c.cuota * c.semanas), 0);
         let costosTotales = clientes.reduce((acc, c) => acc + (c.costo || 0), 0);
@@ -683,7 +664,7 @@ function cambiar(seccion, boton) {
 
             filasTabla += `
             <div class="f-fila-pago">
-                <div>${i}</div>
+                <div>${c.semanas === 1 ? 'Única' : i}</div>
                 <div>${cuotaFormateada}</div>
                 <div>${fechaFormateada}</div>
                 <div class="f-estado ${claseEstado}" onclick="togglePagoFactura(${i}, this)">${textoEstado}</div>
@@ -714,7 +695,7 @@ function cambiar(seccion, boton) {
                         <div class="f-cell label">Producto</div>
                         <div class="f-cell value">${c.producto}</div>
                         <div class="f-cell label">Cant. Semanas</div>
-                        <div class="f-cell value">${c.semanas}</div>
+                        <div class="f-cell value">${c.semanas === 1 ? '1 (Cuota única)' : c.semanas}</div>
                     </div>
                     <div class="f-tabla-pagos">
                         <div class="f-fila-pago f-encabezado-pagos">
@@ -924,18 +905,59 @@ function eliminarPedidoMenu() {
     eliminarPedido(pedidoSeleccionadoId);
 }
 
-// ---------- GUARDAR PORCENTAJES ----------
+// ---------- GESTIÓN Y RENDER DE CONFIGURACIÓN DE OPCIONES DE PAGO ----------
+function renderFilasConfigPorcentajes() {
+    let contenedor = document.getElementById("contenedorOpcionesPago");
+    if (!contenedor) return;
+    contenedor.innerHTML = opcionesPago.map((op, idx) => `
+        <div style="display:flex; gap:10px; align-items:center; margin-top:10px;">
+            <div style="flex:1;">
+                <label style="margin-top:0;">Semanas ${op.semanas == 1 ? '(Cuota única)' : ''}</label>
+                <input type="number" class="cfg-semanas" value="${op.semanas}" placeholder="Semanas">
+            </div>
+            <div style="flex:1;">
+                <label style="margin-top:0;">Recargo (%)</label>
+                <input type="number" class="cfg-porc" value="${op.porc}" placeholder="%">
+            </div>
+            ${opcionesPago.length > 1 ? `
+            <button onclick="eliminarOpcionPago(${idx})" style="background:#e74c3c; color:white; border:none; border-radius:12px; width:45px; height:52px; margin-top:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <i class="material-icons-round">delete</i>
+            </button>` : ''}
+        </div>
+    `).join('');
+}
+
+function agregarOpcionPago() {
+    opcionesPago.push({ semanas: 4, porc: 0 });
+    renderFilasConfigPorcentajes();
+}
+
+function eliminarOpcionPago(index) {
+    opcionesPago.splice(index, 1);
+    renderFilasConfigPorcentajes();
+}
+
 function guardarPorcentajes() {
-    porcentajes = {
-        contado: Number(document.getElementById("porcContado").value) || 0,
-        sem4: Number(document.getElementById("porc4").value) || 0,
-        sem6: Number(document.getElementById("porc6").value) || 0,
-        sem8: Number(document.getElementById("porc8").value) || 0,
-        sem10: Number(document.getElementById("porc10").value) || 0,
-        sem12: Number(document.getElementById("porc12").value) || 0
-    };
-    
-    localStorage.setItem("porcentajes", JSON.stringify(porcentajes));
+    let inputsSemanas = document.querySelectorAll(".cfg-semanas");
+    let inputsPorc = document.querySelectorAll(".cfg-porc");
+    let nuevasOpciones = [];
+
+    for (let i = 0; i < inputsSemanas.length; i++) {
+        let sem = parseInt(inputsSemanas[i].value);
+        let porc = parseFloat(inputsPorc[i].value);
+        if (!isNaN(sem) && sem > 0 && !isNaN(porc)) {
+            nuevasOpciones.push({ semanas: sem, porc: porc });
+        }
+    }
+
+    if (nuevasOpciones.length === 0) {
+        alert("Debes ingresar al menos una opción válida.");
+        return;
+    }
+
+    nuevasOpciones.sort((a, b) => a.semanas - b.semanas);
+    opcionesPago = nuevasOpciones;
+    localStorage.setItem("opcionesPago", JSON.stringify(opcionesPago));
     cambiar('presupuesto');
 }
 
@@ -1003,7 +1025,8 @@ async function pegarTexto() {
 function calcular() {
     const input = document.getElementById("valor");
     const modo = document.getElementById("modo").value;
-    const tope = parseInt(document.getElementById("tope").value);
+    const topeSelect = document.getElementById("tope");
+    const tope = topeSelect ? parseInt(topeSelect.value) : 999;
     const base = parseFloat(input.value);
     const producto = document.getElementById("producto").value.trim();
     const mostrarContado = document.getElementById("mostrarContado").checked;
@@ -1014,42 +1037,36 @@ function calcular() {
         return;
     }
 
-    let arraySemanas = [
-        { cant: 4, porc: porcentajes.sem4 },
-        { cant: 6, porc: porcentajes.sem6 },
-        { cant: 8, porc: porcentajes.sem8 },
-        { cant: 10, porc: porcentajes.sem10 },
-        { cant: 12, porc: porcentajes.sem12 }
-    ];
-
     let htmlFilas = "";
     let textoPlano = "";
 
+    let opCuotaUnica = opcionesPago.find(o => o.semanas === 1);
     if (mostrarContado) {
-        const totalContado = redondearMiles(base * (1 + (porcentajes.contado / 100)));
-        htmlFilas += `<div class="ticket-row" style="color:#2ecc71; font-weight:700;"><span>Precio Contado</span><span>$${totalContado.toLocaleString("es-AR")}</span></div>`;
-        textoPlano += `Precio Contado: $${totalContado.toLocaleString("es-AR")}\n`;
+        let porcContado = opCuotaUnica ? opCuotaUnica.porc : 20;
+        const totalContado = redondearMiles(base * (1 + (porcContado / 100)));
+        htmlFilas += `<div class="ticket-row" style="color:#2ecc71; font-weight:700;"><span>Precio Contado / Cuota Única</span><span>$${totalContado.toLocaleString("es-AR")}</span></div>`;
+        textoPlano += `Precio Contado / Cuota Única: $${totalContado.toLocaleString("es-AR")}\n`;
     }
 
     if (modo == "semanal") {
-        arraySemanas.forEach(function(s) {
-            if (s.cant <= tope) {
+        opcionesPago.filter(s => s.semanas > 1).forEach(function(s) {
+            if (s.semanas <= tope) {
                 const total = base * (1 + s.porc / 100);
-                const cuota = redondearMiles(total / s.cant);
-                htmlFilas += `<div class="ticket-row"><span>${s.cant} Semanas</span><span>$${cuota.toLocaleString("es-AR")}</span></div>`;
-                textoPlano += `${s.cant} semanas: $${cuota.toLocaleString("es-AR")}\n`;
+                const cuota = redondearMiles(total / s.semanas);
+                htmlFilas += `<div class="ticket-row"><span>${s.semanas} Semanas</span><span>$${cuota.toLocaleString("es-AR")}</span></div>`;
+                textoPlano += `${s.semanas} semanas: $${cuota.toLocaleString("es-AR")}\n`;
             }
         });
     }
 
     if (modo == "quincenal") {
-        arraySemanas.forEach(function(s) {
-            if (s.cant <= tope) {
+        opcionesPago.filter(s => s.semanas > 1).forEach(function(s) {
+            if (s.semanas <= tope) {
                 const total = base * (1 + s.porc / 100);
-                const cuota = redondearMiles(total / s.cant);
+                const cuota = redondearMiles(total / s.semanas);
                 const quincena = cuota * 2;
-                htmlFilas += `<div class="ticket-row"><span>${s.cant / 2} Quincenas</span><span>$${quincena.toLocaleString("es-AR")}</span></div>`;
-                textoPlano += `${s.cant / 2} quincenas: $${quincena.toLocaleString("es-AR")}\n`;
+                htmlFilas += `<div class="ticket-row"><span>${s.semanas / 2} Quincenas</span><span>$${quincena.toLocaleString("es-AR")}</span></div>`;
+                textoPlano += `${s.semanas / 2} quincenas: $${quincena.toLocaleString("es-AR")}\n`;
             }
         });
     }
@@ -1131,7 +1148,7 @@ function exportarDatos() {
     const backupData = {
         clientes: clientes,
         gastos: gastos,
-        porcentajes: porcentajes,
+        opcionesPago: opcionesPago,
         ventasFinalizadas: ventasFinalizadas,
         pedidos: pedidos
     };
@@ -1173,15 +1190,15 @@ function importarDatos(event) {
                     ventasFinalizadas = contenido.ventasFinalizadas || [];
                     pedidos = contenido.pedidos || [];
                     
-                    if (contenido.porcentajes) {
-                        porcentajes = contenido.porcentajes;
-                        localStorage.setItem("porcentajes", JSON.stringify(porcentajes));
+                    if (contenido.opcionesPago) {
+                        opcionesPago = contenido.opcionesPago;
+                        localStorage.setItem("opcionesPago", JSON.stringify(opcionesPago));
                     }
                 } else {
                     throw new Error("Formato inválido");
                 }
                 
-                migrarDatos(); // Genera id o pedidos faltantes de backups viejos
+                migrarDatos();
 
                 localStorage.setItem("clientes", JSON.stringify(clientes));
                 localStorage.setItem("gastos", JSON.stringify(gastos));
@@ -1281,26 +1298,24 @@ function actualizarTope() {
     if (!modoSelect) return;
     const modo = modoSelect.value;
     const tope = document.getElementById("tope");
+    if (!tope) return;
     tope.innerHTML = "";
 
-    if (modo == "semanal") {
-        [4,6,8,10,12].forEach(function(n) {
-            const op = document.createElement("option");
-            op.value = n;
-            op.textContent = n + " semanas";
-            tope.appendChild(op);
-        });
-    }
+    opcionesPago.forEach(function(op) {
+        if (op.semanas === 1) return;
+        const opEl = document.createElement("option");
+        opEl.value = op.semanas;
+        if (modo == "semanal") {
+            opEl.textContent = op.semanas + " semanas";
+        } else if (modo == "quincenal") {
+            opEl.textContent = (op.semanas / 2) + " quincenas";
+        }
+        tope.appendChild(opEl);
+    });
 
-    if (modo == "quincenal") {
-        [4,6,8,10,12].forEach(function(n) {
-            const op = document.createElement("option");
-            op.value = n;
-            op.textContent = (n / 2) + " quincenas";
-            tope.appendChild(op);
-        });
+    if (tope.options.length > 0) {
+        tope.value = tope.options[tope.options.length - 1].value;
     }
-    tope.value = "12";
 }
 
 function guardarCliente() {
@@ -1337,7 +1352,6 @@ function guardarCliente() {
     if (clienteEditando == -1) {
         clientes.push(cliente);
         
-        // Creación automática del pedido
         pedidos.push({
             id: generarId(),
             clienteId: cliente.id,
@@ -1350,7 +1364,6 @@ function guardarCliente() {
     } else {
         clientes[clienteEditando] = cliente;
         
-        // Actualizar info del pedido si ya existe y editamos el cliente
         let p = pedidos.find(x => x.clienteId === cliente.id);
         if (p) {
             p.nombre = cliente.nombre;
@@ -1460,7 +1473,10 @@ function editarCliente() {
         document.getElementById("direccionCliente").value = clientes[clienteEditando].direccion || "";
         document.getElementById("productoCliente").value = clientes[clienteEditando].producto;
         document.getElementById("costoCliente").value = clientes[clienteEditando].costo || "";
-        document.getElementById("semanasCliente").value = clientes[clienteEditando].semanas || 12;
+        
+        let selSemanas = document.getElementById("semanasCliente");
+        if (selSemanas) selSemanas.value = clientes[clienteEditando].semanas || 1;
+        
         document.getElementById("cuotaCliente").value = clientes[clienteEditando].cuota;
         document.getElementById("fechaInicioCliente").value = clientes[clienteEditando].fechaInicio || "";
         document.getElementById("menuFila").style.display = "none";
