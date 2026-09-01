@@ -650,7 +650,9 @@ function cambiar(seccion, boton) {
         if (!c.pagos) c.pagos = {};
 
         let filasTabla = "";
-        let fechaActual = new Date(c.fechaInicio);
+        // Código corregido:
+let fechaActual = new Date(c.fechaInicio + "T00:00:00");
+
 
         for (let i = 1; i <= c.semanas; i++) {
             let mesStr = fechaActual.toLocaleDateString("es-AR", { month: "short" }).replace(".", "");
