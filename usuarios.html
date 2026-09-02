@@ -53,8 +53,9 @@
             right: -130px;
             filter: blur(10px);
         }
-        /* Caja principal */
-        .login-box {
+        
+        /* Cajas principales (comparten estilos de cristal) */
+        .login-box, .pwa-warning {
             position: relative;
             z-index: 2;
             width: calc(100% - 40px);
@@ -65,9 +66,11 @@
             border-radius: 24px;
             backdrop-filter: blur(18px);
             -webkit-backdrop-filter: blur(18px);
-            box-shadow:
-                0 20px 50px rgba(0, 0, 0, 0.20);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.20);
+            display: none; /* Se ocultan por defecto hasta que JS decide */
         }
+        
+        /* Específicos del Login */
         .login-box h1 {
             text-align: center;
             color: #ffffff;
@@ -75,7 +78,6 @@
             margin-bottom: 28px;
             font-weight: 700;
         }
-        /* Campo usuario */
         .input-group {
             width: 100%;
         }
@@ -95,10 +97,8 @@
         }
         .input-group input:focus {
             border-color: #38bdf8;
-            box-shadow:
-                0 0 0 3px rgba(56, 189, 248, 0.20);
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.20);
         }
-        /* Recordar usuario */
         .remember {
             display: flex;
             align-items: center;
@@ -114,33 +114,23 @@
             accent-color: #38bdf8;
             cursor: pointer;
         }
-        /* Botón */
         .login-button {
             width: 100%;
             height: 54px;
             border: none;
             border-radius: 14px;
-            background: linear-gradient(
-                135deg,
-                #0ea5e9,
-                #38bdf8
-            );
+            background: linear-gradient(135deg, #0ea5e9, #38bdf8);
             color: #ffffff;
             font-size: 17px;
             font-weight: 700;
             cursor: pointer;
-            box-shadow:
-                0 8px 20px rgba(14, 165, 233, 0.30);
-            transition:
-                transform 0.15s ease,
-                box-shadow 0.15s ease;
+            box-shadow: 0 8px 20px rgba(14, 165, 233, 0.30);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
         .login-button:active {
             transform: scale(0.97);
-            box-shadow:
-                0 4px 12px rgba(14, 165, 233, 0.25);
+            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.25);
         }
-        /* Mensaje de error */
         .error {
             display: none;
             margin-top: 15px;
@@ -149,6 +139,23 @@
             font-size: 14px;
             font-weight: 600;
         }
+
+        /* Específicos del cartel PWA */
+        .pwa-warning {
+            text-align: center;
+        }
+        .pwa-warning h1 {
+            color: #ffffff;
+            font-size: 24px;
+            margin-bottom: 16px;
+            font-weight: 700;
+        }
+        .pwa-warning p {
+            color: #ffffff;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+
         /* ==========================================
            PANTALLA DEL SISTEMA
            ========================================== */
@@ -169,7 +176,7 @@
             display: block;
         }
         @media (max-height: 600px) {
-            .login-box {
+            .login-box, .pwa-warning {
                 padding: 25px 24px;
             }
             .login-box h1 {
@@ -179,6 +186,15 @@
     </style>
 </head>
 <body>
+
+    <!-- ==========================================
+         CARTEL INSTALACIÓN PWA
+         ========================================== -->
+    <div class="pwa-warning" id="pwaWarning">
+        <h1>Instalación Requerida</h1>
+        <p>Para usar esta plataforma, necesitás instalarla en tu dispositivo ("Agregar a la pantalla principal") y abrirla desde allí.</p>
+    </div>
+
     <!-- ==========================================
          LOGIN
          ========================================== -->
@@ -214,6 +230,7 @@
             Usuario incorrecto.
         </div>
     </div>
+
     <!-- ==========================================
          SISTEMA
          ========================================== -->
@@ -223,149 +240,69 @@
             title="Pagos Semanales"
         ></iframe>
     </div>
+
     <script>
-        /*
-        ==========================================
-        CONFIGURACIÓN
-        ==========================================
-        USUARIO VÁLIDO
-        ==========================================
-        */
         const USUARIO_VALIDO = "admin";
-        /*
-        ==========================================
-        URL DEL SISTEMA
-        Si en el futuro querés cambiar la página
-        que se abre dentro del mismo index.html,
-        modificá solamente esta línea.
-        ==========================================
-        */
-        const DESTINO_URL =
-            "https://semanaspagos.vercel.app/";
-        /*
-        ==========================================
-        RECORDAR USUARIO
-        ==========================================
-        */
-        window.addEventListener(
-            "DOMContentLoaded",
-            function () {
-                const usuarioGuardado =
-                    localStorage.getItem(
-                        "usuarioRecordado"
-                    );
+        const DESTINO_URL = "https://semanaspagos.vercel.app/";
+
+        window.addEventListener("DOMContentLoaded", function () {
+            /* 
+            ==========================================
+            DETECTAR MODO APLICACIÓN (PWA)
+            Comprueba si se abrió desde la pantalla de inicio.
+            Cubre Android, Desktop Chrome/Edge y dispositivos iOS.
+            ==========================================
+            */
+            const esAppInstalada = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+            if (!esAppInstalada) {
+                // Si está en el navegador web normal, mostrar advertencia
+                document.getElementById("pwaWarning").style.display = "block";
+            } else {
+                // Si es la app instalada, mostrar el login
+                document.getElementById("loginBox").style.display = "block";
+
+                // Lógica original de autologin
+                const usuarioGuardado = localStorage.getItem("usuarioRecordado");
                 if (usuarioGuardado) {
-                    document.getElementById(
-                        "usuario"
-                    ).value = usuarioGuardado;
-                    document.getElementById(
-                        "recordar"
-                    ).checked = true;
-                    /*
-                    Ingreso automático
-                    */
+                    document.getElementById("usuario").value = usuarioGuardado;
+                    document.getElementById("recordar").checked = true;
                     iniciarSesion(true);
                 }
             }
-        );
-        /*
-        ==========================================
-        INICIAR SESIÓN
-        ==========================================
-        */
-        function iniciarSesion(
-            automatico = false
-        ) {
-            const usuarioInput =
-                document.getElementById(
-                    "usuario"
-                );
-            const recordar =
-                document.getElementById(
-                    "recordar"
-                );
-            const error =
-                document.getElementById(
-                    "error"
-                );
-            const usuario =
-                usuarioInput.value
-                    .trim()
-                    .toLowerCase();
-            /*
-            ==========================================
-            COMPROBAR USUARIO
-            ==========================================
-            */
-            if (
-                usuario === USUARIO_VALIDO
-            ) {
-                /*
-                ==========================================
-                AGREGADO: GUARDAR PERMISO DE ACCESO
-                Esto le avisa a index.html que el usuario
-                pasó por aquí correctamente.
-                ==========================================
-                */
+        });
+
+        function iniciarSesion(automatico = false) {
+            const usuarioInput = document.getElementById("usuario");
+            const recordar = document.getElementById("recordar");
+            const error = document.getElementById("error");
+            const usuario = usuarioInput.value.trim().toLowerCase();
+
+            if (usuario === USUARIO_VALIDO) {
                 sessionStorage.setItem("accesoPermitido", "true");
 
-                /*
-                Guardar usuario
-                */
                 if (recordar.checked) {
-                    localStorage.setItem(
-                        "usuarioRecordado",
-                        usuario
-                    );
+                    localStorage.setItem("usuarioRecordado", usuario);
                 } else {
-                    localStorage.removeItem(
-                        "usuarioRecordado"
-                    );
+                    localStorage.removeItem("usuarioRecordado");
                 }
-                /*
-                Ocultar login
-                */
-                document.getElementById(
-                    "loginBox"
-                ).style.display = "none";
-                /*
-                Mostrar sistema
-                */
-                document.getElementById(
-                    "sistema"
-                ).style.display = "block";
-                /*
-                Cargar la página dentro
-                del mismo index.html
-                */
-                document.getElementById(
-                    "sistemaFrame"
-                ).src = DESTINO_URL;
+                
+                document.getElementById("loginBox").style.display = "none";
+                document.getElementById("sistema").style.display = "block";
+                document.getElementById("sistemaFrame").src = DESTINO_URL;
             } else {
-                /*
-                Mostrar error
-                */
                 error.style.display = "block";
                 if (!automatico) {
                     usuarioInput.focus();
                 }
             }
         }
-        /*
-        ==========================================
-        ENTER PARA INGRESAR
-        ==========================================
-        */
-        document.getElementById(
-            "usuario"
-        ).addEventListener(
-            "keydown",
-            function (event) {
-                if (event.key === "Enter") {
-                    iniciarSesion();
-                }
+
+        document.getElementById("usuario").addEventListener("keydown", function (event) {
+            if (event.key === "Enter") {
+                iniciarSesion();
             }
-        );
+        });
     </script>
 </body>
 </html>
