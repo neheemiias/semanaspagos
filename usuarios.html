@@ -95,7 +95,8 @@
         }
         .input-group input:focus {
             border-color: #38bdf8;
-            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.20);
+            box-shadow:
+                0 0 0 3px rgba(56, 189, 248, 0.20);
         }
         /* Recordar usuario */
         .remember {
@@ -130,8 +131,9 @@
             cursor: pointer;
             box-shadow:
                 0 8px 20px rgba(14, 165, 233, 0.30);
-            transition: transform 0.15s ease,
-                        box-shadow 0.15s ease;
+            transition:
+                transform 0.15s ease,
+                box-shadow 0.15s ease;
         }
         .login-button:active {
             transform: scale(0.97);
@@ -147,6 +149,25 @@
             font-size: 14px;
             font-weight: 600;
         }
+        /* ==========================================
+           PANTALLA DEL SISTEMA
+           ========================================== */
+        #sistema {
+            display: none;
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 999;
+            background: #ffffff;
+            overflow: hidden;
+        }
+        #sistema iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
         @media (max-height: 600px) {
             .login-box {
                 padding: 25px 24px;
@@ -158,7 +179,10 @@
     </style>
 </head>
 <body>
-    <div class="login-box">
+    <!-- ==========================================
+         LOGIN
+         ========================================== -->
+    <div class="login-box" id="loginBox">
         <h1>Ingresar</h1>
         <div class="input-group">
             <input
@@ -171,67 +195,113 @@
             >
         </div>
         <label class="remember">
-            <input type="checkbox" id="recordar">
+            <input
+                type="checkbox"
+                id="recordar"
+            >
             <span>Recordar usuario</span>
         </label>
-        <button class="login-button" onclick="iniciarSesion()">
+        <button
+            class="login-button"
+            onclick="iniciarSesion()"
+        >
             Ingresar
         </button>
-        <div class="error" id="error">
+        <div
+            class="error"
+            id="error"
+        >
             Usuario incorrecto.
         </div>
+    </div>
+    <!-- ==========================================
+         SISTEMA
+         ========================================== -->
+    <div id="sistema">
+        <iframe
+            id="sistemaFrame"
+            title="Pagos Semanales"
+        ></iframe>
     </div>
     <script>
         /*
         ==========================================
         CONFIGURACIÓN
         ==========================================
-        Usuario válido:
-        admin
-        URL a la que se ingresa después de
-        iniciar sesión:
-        Si en el futuro querés cambiarla,
-        modificá solamente DESTINO_URL.
+        USUARIO VÁLIDO
         ==========================================
         */
         const USUARIO_VALIDO = "admin";
-        const DESTINO_URL = "https://semanaspagos.vercel.app/";
+        /*
+        ==========================================
+        URL DEL SISTEMA
+        Si en el futuro querés cambiar la página
+        que se abre dentro del mismo index.html,
+        modificá solamente esta línea.
+        ==========================================
+        */
+        const DESTINO_URL =
+            "https://semanaspagos.vercel.app/";
         /*
         ==========================================
         RECORDAR USUARIO
         ==========================================
         */
-        window.addEventListener("DOMContentLoaded", function () {
-            const usuarioGuardado =
-                localStorage.getItem("usuarioRecordado");
-            if (usuarioGuardado) {
-                document.getElementById("usuario").value =
-                    usuarioGuardado;
-                document.getElementById("recordar").checked =
-                    true;
-                // Ingreso automático
-                iniciarSesion(true);
+        window.addEventListener(
+            "DOMContentLoaded",
+            function () {
+                const usuarioGuardado =
+                    localStorage.getItem(
+                        "usuarioRecordado"
+                    );
+                if (usuarioGuardado) {
+                    document.getElementById(
+                        "usuario"
+                    ).value = usuarioGuardado;
+                    document.getElementById(
+                        "recordar"
+                    ).checked = true;
+                    /*
+                    Ingreso automático
+                    */
+                    iniciarSesion(true);
+                }
             }
-        });
+        );
         /*
         ==========================================
         INICIAR SESIÓN
         ==========================================
         */
-        function iniciarSesion(automatico = false) {
+        function iniciarSesion(
+            automatico = false
+        ) {
             const usuarioInput =
-                document.getElementById("usuario");
+                document.getElementById(
+                    "usuario"
+                );
             const recordar =
-                document.getElementById("recordar");
+                document.getElementById(
+                    "recordar"
+                );
             const error =
-                document.getElementById("error");
+                document.getElementById(
+                    "error"
+                );
             const usuario =
-                usuarioInput.value.trim().toLowerCase();
-            // Comprobar usuario
-            if (usuario === USUARIO_VALIDO) {
+                usuarioInput.value
+                    .trim()
+                    .toLowerCase();
+            /*
+            ==========================================
+            COMPROBAR USUARIO
+            ==========================================
+            */
+            if (
+                usuario === USUARIO_VALIDO
+            ) {
                 /*
-                Si está marcado "Recordar usuario",
-                guardamos el usuario en localStorage.
+                Guardar usuario
                 */
                 if (recordar.checked) {
                     localStorage.setItem(
@@ -239,17 +309,33 @@
                         usuario
                     );
                 } else {
-                    /*
-                    Si desmarca recordar,
-                    eliminamos el usuario guardado.
-                    */
                     localStorage.removeItem(
                         "usuarioRecordado"
                     );
                 }
-                // Redirección
-                window.location.href = DESTINO_URL;
+                /*
+                Ocultar login
+                */
+                document.getElementById(
+                    "loginBox"
+                ).style.display = "none";
+                /*
+                Mostrar sistema
+                */
+                document.getElementById(
+                    "sistema"
+                ).style.display = "block";
+                /*
+                Cargar la página dentro
+                del mismo index.html
+                */
+                document.getElementById(
+                    "sistemaFrame"
+                ).src = DESTINO_URL;
             } else {
+                /*
+                Mostrar error
+                */
                 error.style.display = "block";
                 if (!automatico) {
                     usuarioInput.focus();
@@ -257,14 +343,20 @@
             }
         }
         /*
-        Permitir ingresar presionando ENTER
+        ==========================================
+        ENTER PARA INGRESAR
+        ==========================================
         */
-        document.getElementById("usuario")
-            .addEventListener("keydown", function (event) {
+        document.getElementById(
+            "usuario"
+        ).addEventListener(
+            "keydown",
+            function (event) {
                 if (event.key === "Enter") {
                     iniciarSesion();
                 }
-            });
+            }
+        );
     </script>
 </body>
 </html>
