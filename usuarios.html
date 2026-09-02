@@ -301,6 +301,15 @@
                 usuario === USUARIO_VALIDO
             ) {
                 /*
+                ==========================================
+                AGREGADO: GUARDAR PERMISO DE ACCESO
+                Esto le avisa a index.html que el usuario
+                pasó por aquí correctamente.
+                ==========================================
+                */
+                sessionStorage.setItem("accesoPermitido", "true");
+
+                /*
                 Guardar usuario
                 */
                 if (recordar.checked) {
