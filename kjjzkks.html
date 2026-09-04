@@ -1,0 +1,1326 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pagos Semanales V2.0</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#172554">
+    
+    <link rel="icon" type="image/png" href="icono.png">
+    <link rel="apple-touch-icon" href="icono.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Pagos">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+/* ---------- ESTILOS GENERALES ---------- */
+* { margin:0; padding:0; box-sizing:border-box; font-family:'Poppins',sans-serif; }
+html,body { width:100%; height:100%; overflow:hidden; }
+body { background:linear-gradient(160deg,#dfe7f4,#f8fafc); }
+
+/* ==========================================
+   ESTILOS DEL LOGIN Y PWA (HTML 1)
+   ========================================== */
+#login-container {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #172554 0%, #2563eb 50%, #38bdf8 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    overflow: hidden;
+}
+
+#login-container::before {
+    content: "";
+    position: absolute;
+    width: 400px;
+    height: 400px;
+    background: rgba(255, 255, 255, 0.10);
+    border-radius: 50%;
+    top: -180px;
+    left: -150px;
+    filter: blur(10px);
+}
+#login-container::after {
+    content: "";
+    position: absolute;
+    width: 350px;
+    height: 350px;
+    background: rgba(255, 255, 255, 0.10);
+    border-radius: 50%;
+    bottom: -180px;
+    right: -130px;
+    filter: blur(10px);
+}
+
+.login-box, .pwa-warning {
+    position: relative;
+    z-index: 2;
+    width: calc(100% - 40px);
+    max-width: 380px;
+    padding: 35px 28px;
+    background: rgba(255, 255, 255, 0.20);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 24px;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.20);
+    display: none; /* Se ocultan por defecto hasta que JS decide */
+}
+
+/* Específicos del Login */
+.login-box h1 {
+    text-align: center;
+    color: #ffffff;
+    font-size: 28px;
+    margin-bottom: 28px;
+    font-weight: 700;
+}
+.input-group { width: 100%; }
+.input-group-login input {
+    width: 100%;
+    height: 54px;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.85);
+    padding: 0 17px;
+    font-size: 16px;
+    color: #1e293b;
+    outline: none;
+    font-family: Arial, Helvetica, sans-serif;
+}
+.input-group-login input::placeholder { color: #64748b; }
+.input-group-login input:focus {
+    border-color: #38bdf8;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.20);
+}
+.remember {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin: 18px 2px 24px;
+    color: #ffffff;
+    font-size: 14px;
+    cursor: pointer;
+}
+.remember input {
+    width: 17px;
+    height: 17px;
+    accent-color: #38bdf8;
+    cursor: pointer;
+}
+.login-button {
+    width: 100%;
+    height: 54px;
+    border: none;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #0ea5e9, #38bdf8);
+    color: #ffffff;
+    font-size: 17px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(14, 165, 233, 0.30);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.login-button:active {
+    transform: scale(0.97);
+    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.25);
+}
+.error {
+    display: none;
+    margin-top: 15px;
+    text-align: center;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+/* Específicos del cartel PWA */
+.pwa-warning { text-align: center; font-family: Arial, Helvetica, sans-serif; }
+.pwa-warning h1 {
+    color: #ffffff;
+    font-size: 24px;
+    margin-bottom: 16px;
+    font-weight: 700;
+}
+.pwa-warning p {
+    color: #ffffff;
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+@media (max-height: 600px) {
+    .login-box, .pwa-warning { padding: 25px 24px; }
+    .login-box h1 { margin-bottom: 20px; }
+}
+
+/* ==========================================
+   ESTILOS DE LA APLICACIÓN (HTML 2)
+   ========================================== */
+#app-container {
+    display: none; /* Oculto hasta iniciar sesión */
+    width: 100%;
+    height: 100%;
+}
+
+header { height:80px; padding:20px; display:flex; justify-content:flex-end; align-items:center; }
+.info { text-align:right; }
+.info h3 { font-size:15px; color:#244b8a; }
+.info p { font-size:12px; color:#777; }
+main { height:calc(100vh - 160px); width:100%; display:flex; justify-content:center; align-items:center; overflow:hidden; }
+.card { width:100%; max-width:380px; padding:45px 30px; background:rgba(255,255,255,.75); backdrop-filter:blur(15px); border-radius:35px; text-align:center; box-shadow:0 15px 40px rgba(0,0,0,.10); }
+.card h1 { font-size:38px; color:#1f4178; }
+.card p { margin-top:12px; color:#666; font-size:15px; }
+.line { width:140px; height:5px; background:#d5a74e; border-radius:50px; margin:25px auto 0; }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.full-screen { width:100%; height:100%; padding:20px; overflow:hidden; animation: fadeIn 0.3s ease-out forwards; }
+
+nav { position:fixed; bottom:18px; left:15px; right:15px; height:82px; background:white; border-radius:28px; display:flex; align-items:center; justify-content:space-around; box-shadow:0 10px 35px rgba(0,0,0,.12); z-index:900; }
+.item { flex:1; text-align:center; color:#999; cursor:pointer; }
+.item.active { color:#2f6bff; }
+.item i { display:block; font-size:28px; }
+.item span { font-size:11px; font-weight:600; display:block; margin-top:2px; }
+
+.presupuesto { width:100%; max-width:650px; margin:0 auto; padding:10px; overflow-y:auto; height:100%; padding-bottom:120px; }
+.presupuesto h2 { font-size:28px; color:#1f4178; margin-bottom:15px; }
+.presupuesto label { display:block; margin-top:16px; margin-bottom:6px; font-size:14px; font-weight:600; color:#444; }
+.presupuesto input, .presupuesto select { width:100%; height:52px; border:none; outline:none; border-radius:16px; padding:0 16px; background:white; font-size:15px; box-shadow:0 5px 15px rgba(0,0,0,.08); }
+
+.input-group { display:flex; gap:10px; }
+.input-group input { flex:1; }
+
+.btn-paste { width:52px; height:52px; border:none; border-radius:16px; background:#e2e8f0; color:#1f4178; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 5px 15px rgba(0,0,0,.08); transition:.2s; }
+.btn-paste:active { transform:scale(.95); background:#cbd5e1; }
+
+.btn-config { width:100%; height:52px; border:none; border-radius:16px; background:#e2e8f0; color:#1f4178; font-size:15px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:10px; transition:.2s;}
+.btn-config:active { transform:scale(.98); }
+
+.check { display:flex; align-items:center; gap:10px; margin-top:22px; }
+.check input { width:20px; height:20px; }
+.check label { margin:0; font-weight:500; }
+
+.botones { display:flex; gap:10px; margin-top:25px; flex-wrap:wrap; }
+.botones button { flex:1; height:50px; border:none; border-radius:16px; font-size:15px; font-weight:600; cursor:pointer; background:#2f6bff; color:white; transition:.2s; display:flex; align-items:center; justify-content:center; gap:5px; }
+.botones button:active { transform:scale(.98); }
+.limpiar { background:#d9534f !important; }
+
+/* ---------- TICKET ---------- */
+.ticket-container { display:none; flex-direction:column; gap:5px; margin-top:25px; }
+.ticket { background:#fff; padding:15px 15px; border-radius:0; box-shadow:0 8px 25px rgba(0,0,0,.06); position:relative; }
+.ticket-header { font-size:13px; font-weight:800; color:#0f172a; text-align:left; margin-bottom:10px; border-bottom:1px solid #cbd5e1; padding-bottom:12px; text-transform:uppercase; letter-spacing:2px; }
+.ticket-producto { font-size:13px; font-weight:800; margin-bottom:10px; color:#000; text-align:center; }
+.ticket-row { display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px dashed #cbd5e1; font-size:10px; color:#000; font-weight:700; }
+.ticket-oferta { margin-top:10px; font-size:12px; text-align:center; color:#64748b; font-style:italic; }
+.ticket-logo { text-align:right; margin-top:15px; }
+.ticket-logo h4 { margin:0; font-size:19px; line-height:1; color:#000; font-weight:900; }
+.ticket-logo h4.amarillo { color:#facc15; }
+
+/* ---------- CONTROL SEMANA / REGISTRO ---------- */
+.control { width:100%; height:100%; padding:10px 10px 120px 10px; overflow-y:auto; overflow-x:hidden; }
+.control h2 { font-size:28px; color:#1f4178; margin-bottom:20px; }
+.btn-agregar { width:100%; height:52px; border:none; border-radius:16px; background:#2f6bff; color:white; font-size:16px; font-weight:600; margin-bottom:10px; cursor:pointer; }
+.btn-gasto { background:#e74c3c; margin-top:10px; }
+.btn-finalizadas { background:#244b8a; margin-bottom: 20px; }
+.buscador-container { display:flex; align-items:center; background:white; border-radius:16px; padding:0 15px; margin-bottom:20px; box-shadow:0 5px 15px rgba(0,0,0,.08); height:52px; }
+.buscador-container i { color:#8fa3b8; font-size:22px; margin-right:10px; }
+.buscador-container input { border:none; outline:none; width:100%; height:100%; font-size:15px; background:transparent; color:#444; font-family:'Poppins',sans-serif; }
+.buscador-container input::placeholder { color:#aaa; }
+
+.tabla-contenedor { width:100%; }
+.tabla { width:100%; background:white; border-radius:20px; overflow:hidden; box-shadow:0 8px 25px rgba(0,0,0,.08); }
+.fila { display:grid; grid-template-columns:1.4fr 1.2fr .8fr .5fr; align-items:center; min-height:60px; border-bottom:1px solid #eee; padding:0 10px; font-size:13px; text-align:center; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+.fila:last-child { border-bottom:none; }
+.encabezado { background:#1f4178; color:white; font-weight:600; font-size:13px; }
+
+.estado { width:18px; height:18px; border-radius:50%; display:inline-block; margin:auto; cursor:pointer; }
+.rojo { background:#e74c3c; }
+.verde { background:#2ecc71; }
+.percibir { width:100%; text-align:center; font-size:18px; font-weight:600; color:#1f4178; margin-bottom:20px; white-space:nowrap; }
+
+.resumen-registro { display:flex; justify-content:space-between; background: white; padding: 15px; border-radius: 16px; box-shadow:0 5px 15px rgba(0,0,0,.05); margin-bottom: 20px; text-align: center; font-size: 14px; }
+.resumen-item { flex: 1; }
+.resumen-item span { display: block; font-weight: 700; font-size: 16px; margin-top: 5px; }
+
+/* ---------- AGREGAR / EDITAR CLIENTE Y GASTOS ---------- */
+.agregar { width:100%; height:100%; padding:10px 10px 120px 10px; overflow-y:auto; overflow-x:hidden; }
+.agregar h2 { font-size:28px; color:#1f4178; margin-bottom:15px; }
+.agregar p.subtitulo { color:#666; font-size:14px; margin-bottom:20px; }
+.agregar h3 { font-size:17px; color:#1f4178; margin-top:20px; margin-bottom:10px; }
+.agregar label { display:block; font-size:14px; font-weight:600; color:#444; margin-top:12px; margin-bottom:6px; }
+.agregar input, .agregar select { width:100%; height:52px; border:none; outline:none; border-radius:16px; padding:0 16px; background:white; font-size:15px; box-shadow:0 5px 15px rgba(0,0,0,.08); }
+
+.guardarCliente, .cancelarCliente, .btn-accion { width:100%; height:52px; border:none; border-radius:16px; font-size:16px; font-weight:600; margin-top:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; }
+.guardarCliente { background:#2f6bff; color:white; }
+.cancelarCliente { background:#ddd; color:#444; }
+
+/* ---------- MENÚ CONTEXTUAL FILA ---------- */
+.menu-fila { position:fixed; background:white; width:220px; border-radius:20px; padding:10px; box-shadow:0 10px 35px rgba(0,0,0,.20); display:none; z-index:999; }
+.menu-fila button { width:100%; height:45px; border:none; background:white; font-size:15px; border-radius:12px; cursor:pointer; }
+#nombreMenuFila, #nombreMenuPedido { font-weight:600; color:#1f4178; text-align:center; padding:10px; border-bottom:1px solid #eee; margin-bottom:5px; }
+.menu-fila button:active { background:#eee; }
+
+/* ---------- FACTURA SEMANAL ---------- */
+.factura-view { width:100%; height:100%; overflow-y:auto; padding:0 0 120px 0; background:#f8fafc; animation: fadeIn 0.3s ease-out forwards; }
+.f-header { display:flex; justify-content:space-between; align-items:center; background:#0d1b2a; color:white; padding:15px 20px; }
+.f-header h2 { font-size:18px; margin:0; font-weight:600; }
+.f-header i { cursor:pointer; font-size:24px; }
+.f-contenido { padding:15px; }
+.f-section-title { background:#8fa3b8; color:#000; font-weight:700; font-style:italic; text-align:center; padding:8px; border:1px solid #000; margin-top:15px; font-size:18px; }
+.f-grid { display:grid; grid-template-columns:1.2fr 2fr; border-left:1px solid #000; border-right:1px solid #000; }
+.f-cell { padding:10px; border-bottom:1px solid #000; font-size:14px; display:flex; align-items:center; }
+.f-cell.label { background:#dcecc9; font-style:italic; border-right:1px solid #000; }
+.f-grid.f-compra .f-cell.label { background:#e2e2e2; }
+.f-cell.value { justify-content:center; text-align:center; background:#f4f6f8; }
+.f-tabla-pagos { margin-top:15px; border:1px solid #000; }
+.f-fila-pago { display:grid; grid-template-columns:.8fr 1.2fr 1fr 1fr; text-align:center; border-bottom:1px solid #000; font-size:13px; background:#fff; }
+.f-fila-pago > div { padding:10px 5px; border-right:1px solid #000; display:flex; align-items:center; justify-content:center; }
+.f-fila-pago > div:last-child { border-right:none; }
+.f-fila-pago:last-child { border-bottom:none; }
+.f-encabezado-pagos { background:#8fa3b8; font-weight:700; font-style:italic; }
+.f-estado { cursor:pointer; transition:.2s; }
+.f-estado.f-pendiente { color:#d32f2f; font-weight:700; }
+.f-estado.f-pagado { color:#28a745; font-weight:700; }
+.f-estado:active { transform:scale(.9); }
+.f-footer-logo { text-align:center; margin:35px 0 25px; transform:skew(-5deg); }
+.f-footer-logo h2 { margin:0; font-size:42px; line-height:.9; color:black; font-weight:900; font-style:italic; }
+.f-footer-logo h2.amarillo { color:#ffd700; text-shadow:2px 2px 0 #000,-1px -1px 0 #000,2px -1px 0 #000,-1px 2px 0 #000; }
+.f-botones { display:flex; gap:15px; padding:0 15px; }
+.f-botones button { flex:1; padding:12px; border:none; border-radius:8px; font-size:16px; font-weight:600; color:white; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; }
+.f-btn-compartir { background:#388e3c; }
+.f-btn-volver { background:#0d1b2a; }
+
+/* ---------- SECCIÓN PEDIDOS ---------- */
+.pedido-card { background:white; border-radius:20px; padding:20px; margin-bottom:15px; box-shadow:0 8px 25px rgba(0,0,0,.06); text-align:left; position:relative; }
+.pedido-card-row { margin-bottom:12px; }
+.pedido-label { font-size:11px; color:#8fa3b8; font-weight:700; text-transform:uppercase; margin-bottom:2px; display:block; }
+.pedido-valor { font-size:16px; color:#1f4178; font-weight:600; }
+.estado-pedido { display:inline-flex; align-items:center; justify-content:center; padding:8px 14px; border-radius:10px; font-size:12px; font-weight:700; color:white; cursor:pointer; user-select:none; }
+.estado-a-pedir { background:#f39c12; }
+.estado-pendiente { background:#3498db; }
+.estado-entregado { background:#2ecc71; }
+.btn-eliminar-pedido { background:#ffebee; color:#e74c3c; border:none; padding:8px 12px; border-radius:10px; font-weight:600; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:5px; margin-top:15px; width:100%; justify-content:center; transition:.2s; }
+.btn-eliminar-pedido:active { transform:scale(.98); }
+
+</style>
+</head>
+
+<body>
+
+    <!-- ==========================================
+         LOGIN Y PWA CONTAINER
+         ========================================== -->
+    <div id="login-container">
+        
+        <!-- Cartel PWA -->
+        <div class="pwa-warning" id="pwaWarning">
+            <h1>Instalación Requerida</h1>
+            <p>Para usar esta plataforma, necesitás instalarla en tu dispositivo ("Agregar a la pantalla principal") y abrirla desde allí.</p>
+        </div>
+
+        <!-- Login Box -->
+        <div class="login-box" id="loginBox">
+            <h1>Ingresar</h1>
+            <div class="input-group input-group-login">
+                <input
+                    type="text"
+                    id="usuario"
+                    placeholder="Ingresar usuario"
+                    autocomplete="username"
+                    autocapitalize="none"
+                    spellcheck="false"
+                >
+            </div>
+            <label class="remember">
+                <input
+                    type="checkbox"
+                    id="recordar"
+                >
+                <span>Recordar usuario</span>
+            </label>
+            <button
+                class="login-button"
+                onclick="iniciarSesion()"
+            >
+                Ingresar
+            </button>
+            <div class="error" id="error">
+                Usuario incorrecto.
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ==========================================
+         SISTEMA (APP PRINCIPAL)
+         ========================================== -->
+    <div id="app-container">
+        <header style="display:flex; justify-content:space-between; align-items:center; padding:0 20px;">
+            <button onclick="cambiar('configuracion')" style="background:none; border:none; color:#1f4178; cursor:pointer; padding:5px;">
+                <i class="material-icons-round" style="font-size:28px;">settings</i>
+            </button>
+
+            <div class="info" style="text-align:right;">
+                <h3>Pagos Semanales</h3>
+                <p>V2.0</p>
+            </div>
+        </header>
+
+        <main id="contenido">
+            <!-- Contenido Dinámico -->
+        </main>
+
+        <nav>
+            <div class="item active" onclick="cambiar('inicio',this)">
+                <i class="material-icons-round">home</i>
+                <span>Inicio</span>
+            </div>
+            <div class="item" onclick="cambiar('presupuesto',this)">
+                <i class="material-icons-round">request_quote</i>
+                <span>Precios</span>
+            </div>
+            <div class="item" onclick="cambiar('semana',this)">
+                <i class="material-icons-round">calendar_month</i>
+                <span>Semana</span>
+            </div>
+            <div class="item" onclick="cambiar('pedidos',this)">
+                <i class="material-icons-round">shopping_cart</i>
+                <span>Pedidos</span>
+            </div>
+        </nav>
+    </div>
+
+<script>
+// ==========================================
+// LÓGICA DE INICIO Y PWA
+// ==========================================
+const USUARIO_VALIDO = "demo";
+
+window.addEventListener("DOMContentLoaded", function () {
+    const esAppInstalada = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+    if (!esAppInstalada) {
+        document.getElementById("pwaWarning").style.display = "block";
+    } else {
+        document.getElementById("loginBox").style.display = "block";
+
+        const usuarioGuardado = localStorage.getItem("usuarioRecordado");
+        if (usuarioGuardado) {
+            document.getElementById("usuario").value = usuarioGuardado;
+            document.getElementById("recordar").checked = true;
+            iniciarSesion(true);
+        }
+    }
+    
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js')
+            .catch(err => console.error('Error al registrar SW', err));
+    }
+});
+
+document.getElementById("usuario").addEventListener("keydown", function (event) {
+    if (event.key === "Enter") {
+        iniciarSesion();
+    }
+});
+
+function iniciarSesion(automatico = false) {
+    const usuarioInput = document.getElementById("usuario");
+    const recordar = document.getElementById("recordar");
+    const error = document.getElementById("error");
+    const usuario = usuarioInput.value.trim().toLowerCase();
+
+    if (usuario === USUARIO_VALIDO) {
+        sessionStorage.setItem("accesoPermitido", "true");
+
+        if (recordar.checked) {
+            localStorage.setItem("usuarioRecordado", usuario);
+        } else {
+            localStorage.removeItem("usuarioRecordado");
+        }
+        
+        // Ocultar login, mostrar app
+        document.getElementById("login-container").style.display = "none";
+        document.getElementById("app-container").style.display = "block";
+        
+        // Inicializar la app en el inicio
+        cambiar('inicio');
+    } else {
+        error.style.display = "block";
+        if (!automatico) {
+            usuarioInput.focus();
+        }
+    }
+}
+
+
+// ==========================================
+// LÓGICA DE LA APP (PAGOS SEMANALES)
+// ==========================================
+function generarId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+let clientes = JSON.parse(localStorage.getItem("clientes")) || [];
+let gastos = JSON.parse(localStorage.getItem("gastos")) || [];
+let ventasFinalizadas = JSON.parse(localStorage.getItem("ventasFinalizadas")) || [];
+let pedidos = JSON.parse(localStorage.getItem("pedidos")) || [];
+
+let opcionesPago = JSON.parse(localStorage.getItem("opcionesPago")) || [
+    { semanas: 1, porc: 20 },
+    { semanas: 4, porc: 45 },
+    { semanas: 6, porc: 60 },
+    { semanas: 8, porc: 75 },
+    { semanas: 10, porc: 90 },
+    { semanas: 12, porc: 100 }
+];
+
+let clienteEditando = -1;
+let filaSeleccionada = null;
+let temporizador;
+
+let pedidoEditando = null;
+let pedidoSeleccionadoId = null;
+let temporizadorPedido;
+
+function migrarDatos() {
+    let clientesActualizados = false;
+    let pedidosActualizados = false;
+
+    clientes.forEach(c => {
+        if (!c.id) {
+            c.id = generarId();
+            clientesActualizados = true;
+        }
+    });
+
+    if (!localStorage.getItem("migracionPedidosV2Hecha")) {
+        clientes.forEach(c => {
+            let pedidoExiste = pedidos.find(p => p.clienteId === c.id);
+            if (!pedidoExiste) {
+                pedidos.push({
+                    id: generarId(),
+                    clienteId: c.id,
+                    nombre: c.nombre,
+                    producto: c.producto,
+                    estado: 'a_pedir'
+                });
+                pedidosActualizados = true;
+            }
+        });
+        localStorage.setItem("migracionPedidosV2Hecha", "true");
+    }
+
+    if (clientesActualizados) localStorage.setItem("clientes", JSON.stringify(clientes));
+    if (pedidosActualizados) localStorage.setItem("pedidos", JSON.stringify(pedidos));
+}
+migrarDatos();
+
+function cambiar(seccion, boton) {
+    let contenido = document.getElementById("contenido");
+
+    if (boton) {
+        document.querySelectorAll(".item").forEach(function(e) {
+            e.classList.remove("active");
+        });
+        boton.classList.add("active");
+    }
+
+    if (seccion == "inicio") {
+        contenido.innerHTML = `
+        <div class="full-screen" style="display:flex; justify-content:center; align-items:center; position:relative;">
+            <div class="card">
+                <h1>Bienvenido</h1>
+                <p>Selecciona una opción para comenzar</p>
+                <div class="line"></div>
+            </div>
+        </div>`;
+    }
+
+    if (seccion == "presupuesto") {
+        contenido.innerHTML = `
+        <div class="full-screen">
+            <div class="presupuesto">
+                <h2>Presupuesto</h2>
+                <button class="btn-config" onclick="cambiar('configurarPorcentajes')">
+                    <i class="material-icons-round">tune</i> Configurar semanas y porcentajes
+                </button>
+
+                <label>Nombre del producto</label>
+                <div class="input-group">
+                    <input type="text" id="producto" placeholder="Ej: Zapatillas Nike">
+                    <button class="btn-paste" onclick="pegarTexto()" title="Pegar">
+                        <i class="material-icons-round">content_paste</i>
+                    </button>
+                </div>
+                <label>Valor de costo</label>
+                <input type="number" id="valor" placeholder="Ej: 150000">
+                
+                <label>Modo</label>
+                <select id="modo" onchange="actualizarTope()">
+                    <option value="semanal">Semanal</option>
+                    <option value="quincenal">Quincenal</option>
+                </select>
+                
+                <label>Hasta</label>
+                <select id="tope">
+                </select>
+                
+                <div class="check">
+                    <input type="checkbox" id="mostrarContado">
+                    <label for="mostrarContado">Mostrar precio de contado / Cuota única</label>
+                </div>
+                
+                <div class="botones">
+                    <button onclick="calcular()">Calcular</button>
+                    <button class="limpiar" onclick="limpiarFormulario()">Limpiar</button>
+                </div>
+                
+                <div id="ticketContainer" class="ticket-container">
+                    <div id="ticketVisual" class="ticket"></div>
+                    <div class="botones" style="margin-top:0">
+                        <button id="btnCompartirTicket" onclick="compartirTicket()" style="background:#388e3c;">
+                            <i class="material-icons-round">share</i>
+                            Foto
+                        </button>
+                        <button id="copiar" onclick="copiarTextoTicket()" style="background:#1f4178;">
+                            <i class="material-icons-round">content_copy</i>
+                            Copiar
+                        </button>
+                    </div>
+                    <textarea id="textoOculto" style="display:none;"></textarea>
+                </div>
+            </div>
+        </div>`;
+        actualizarTope();
+    }
+
+    if (seccion == "configurarPorcentajes") {
+        contenido.innerHTML = `
+        <div class="full-screen agregar">
+            <h2>Configurar Opciones de Pago</h2>
+            <p class="subtitulo">Ajustá la cantidad de semanas y sus recargos (%) sobre el costo.</p>
+            
+            <div id="contenedorOpcionesPago"></div>
+            
+            <button class="btn-config" onclick="agregarOpcionPago()" style="margin-top:15px; background:#e2e8f0;">
+                <i class="material-icons-round">add</i> Añadir Opción de Pago
+            </button>
+            
+            <button class="guardarCliente" onclick="guardarPorcentajes()">Guardar Configuración</button>
+            <button class="cancelarCliente" onclick="cambiar('presupuesto')">Cancelar</button>
+        </div>`;
+        renderFilasConfigPorcentajes();
+    }
+
+    if (seccion == "semana") {
+        contenido.innerHTML = `
+        <div class="full-screen control">
+            <h2>Control Semana</h2>
+            <div class="percibir">
+                A percibir: $${clientes.reduce(function(total, c) {
+                    return total + c.cuota;
+                }, 0).toLocaleString("es-AR")}
+            </div>
+            
+            <div class="buscador-container">
+                <i class="material-icons-round">search</i>
+                <input type="text" id="buscadorClientes" oninput="filtrarClientes()" placeholder="Buscar cliente, DNI o producto...">
+            </div>
+            
+            <button class="btn-agregar btn-finalizadas" onclick="cambiar('ventasFinalizadas')">
+                <i class="material-icons-round" style="vertical-align: middle; margin-right: 5px;">done_all</i> Ver Ventas Finalizadas
+            </button>
+            <button class="btn-agregar" onclick="cambiar('agregarCliente')">
+                + Agregar Cliente
+            </button>
+            
+            <div class="tabla-contenedor">
+                <div class="tabla" id="tablaClientes">
+                    <div class="fila encabezado">
+                        <div>Cliente</div>
+                        <div>Producto</div>
+                        <div>Valor</div>
+                        <div>Estado</div>
+                    </div>
+                    ${clientes.length === 0 ? '<div style="padding:20px; text-align:center; color:#999; font-size:14px;">No hay clientes activos</div>' : ''}
+                    ${clientes.map(function(c, index) {
+                        return `
+                        <div class="fila fila-cliente"
+                            oncontextmenu="abrirMenuFila(event,${index})"
+                            onmousedown="iniciarMantener(${index},this)"
+                            onmouseup="cancelarMantener()"
+                            onmouseleave="cancelarMantener()"
+                            ontouchstart="iniciarMantener(${index},this)"
+                            ontouchend="cancelarMantener()"
+                            ontouchmove="cancelarMantener()"
+                        >
+                            <div>${c.nombre}</div>
+                            <div>${c.producto}</div>
+                            <div>$${c.cuota.toLocaleString("es-AR")}</div>
+                            <div>
+                                <span onclick="cambiarEstado(${index}, this)" class="estado ${c.estado ? 'verde' : 'rojo'}"></span>
+                            </div>
+                        </div>`;
+                    }).join("")}
+                </div>
+            </div>
+        </div>`;
+    }
+
+    if (seccion == "ventasFinalizadas") {
+        contenido.innerHTML = `
+        <div class="full-screen control">
+            <h2>Ventas Finalizadas</h2>
+            
+            <button class="btn-agregar" style="background:#1f4178; margin-bottom: 25px;" onclick="cambiar('semana')">
+                <i class="material-icons-round" style="vertical-align: middle; margin-right:5px;">arrow_back</i> Volver a Semana
+            </button>
+            
+            <div class="tabla-contenedor">
+                <div class="tabla">
+                    <div class="fila encabezado" style="grid-template-columns: 1.3fr 1.3fr 1fr 1fr;">
+                        <div>Cliente</div>
+                        <div>Producto</div>
+                        <div>Recaudado</div>
+                        <div>Finalizada</div>
+                    </div>
+                    ${ventasFinalizadas.length === 0 ? '<div style="padding:20px; text-align:center; color:#999; font-size:14px;">Aún no hay ventas finalizadas</div>' : ''}
+                    ${ventasFinalizadas.map(function(v, index) {
+                        let recaudado = v.cuota * v.semanas;
+                        return `
+                        <div class="fila" style="grid-template-columns: 1.3fr 1.3fr 1fr 1fr; font-size:12px;">
+                            <div style="font-weight:600;">${v.nombre}</div>
+                            <div>${v.producto}</div>
+                            <div style="color:#2ecc71; font-weight:700;">$${recaudado.toLocaleString("es-AR")}</div>
+                            <div>${v.fechaFinalizacion || '-'}</div>
+                        </div>`;
+                    }).join("")}
+                </div>
+            </div>
+        </div>`;
+    }
+
+    if (seccion == "agregarCliente") {
+        let opcionesSemanasHTML = opcionesPago.map(op => {
+            let label = op.semanas === 1 ? 'Cuota única (1 pago)' : `${op.semanas} semanas`;
+            return `<option value="${op.semanas}">${label}</option>`;
+        }).join('');
+
+        contenido.innerHTML = `
+        <div class="full-screen agregar">
+            <h2>${clienteEditando == -1 ? 'Agregar' : 'Editar'} Cliente</h2>
+            
+            <h3>Datos del cliente</h3>
+            <label>Nombre</label>
+            <input type="text" id="nombreCliente" placeholder="Nombre y apellido">
+            <label>DNI</label>
+            <input type="number" id="dniCliente" placeholder="DNI">
+            <label>Dirección</label>
+            <input type="text" id="direccionCliente" placeholder="Dirección">
+            
+            <h3>Datos de la compra</h3>
+            <label>Producto</label>
+            <input type="text" id="productoCliente" placeholder="Producto">
+            
+            <label>Costo del producto (Lo que te costó)</label>
+            <input type="number" id="costoCliente" placeholder="$">
+            
+            <label>Modalidad de semanas</label>
+            <select id="semanasCliente">
+                ${opcionesSemanasHTML}
+            </select>
+            
+            <label>Valor de cuota</label>
+            <input type="number" id="cuotaCliente" placeholder="$">
+            
+            <label>Fecha de inicio</label>
+            <input type="date" id="fechaInicioCliente">
+            
+            <button class="guardarCliente" onclick="guardarCliente()">Guardar Cliente</button>
+            <button class="cancelarCliente" onclick="cancelarRegistro()">Cancelar</button>
+        </div>`;
+    }
+
+    if (seccion == "pedidos") {
+        contenido.innerHTML = `
+        <div class="full-screen control">
+            <h2>Pedidos</h2>
+            
+            <div class="buscador-container">
+                <i class="material-icons-round">search</i>
+                <input type="text" id="buscadorPedidos" oninput="filtrarPedidos()" placeholder="Buscar cliente o producto...">
+            </div>
+            
+            <button class="btn-agregar" onclick="prepararAgregarPedido()">
+                + Agregar Pedido
+            </button>
+            
+            <div id="listaPedidos" style="padding-bottom: 20px;">
+                ${renderPedidos()}
+            </div>
+        </div>`;
+    }
+    
+    if (seccion == "agregarPedido") {
+        let p = pedidoEditando ? pedidos.find(x => x.id === pedidoEditando) : null;
+        let pNombre = p ? p.nombre : "";
+        let pProducto = p ? p.producto : "";
+        let pEstado = p ? p.estado : "a_pedir";
+
+        contenido.innerHTML = `
+        <div class="full-screen agregar">
+            <h2>${p ? 'Editar' : 'Agregar'} Pedido</h2>
+            
+            <label>Cliente</label>
+            <input type="text" id="nombrePedido" placeholder="Nombre del cliente" value="${pNombre}">
+            
+            <label>Producto</label>
+            <input type="text" id="productoPedido" placeholder="Producto" value="${pProducto}">
+            
+            <label>Estado</label>
+            <select id="estadoPedido">
+                <option value="a_pedir" ${pEstado === 'a_pedir' ? 'selected' : ''}>A Pedir</option>
+                <option value="pendiente" ${pEstado === 'pendiente' ? 'selected' : ''}>Pendiente de Entrega</option>
+                <option value="entregado" ${pEstado === 'entregado' ? 'selected' : ''}>Entregado</option>
+            </select>
+            
+            <button class="guardarCliente" onclick="guardarPedidoManual()">Guardar Pedido</button>
+            <button class="cancelarCliente" onclick="cambiar('pedidos'); document.querySelectorAll('.item').forEach(el => el.classList.remove('active')); document.querySelectorAll('.item')[3].classList.add('active');">Cancelar</button>
+        </div>`;
+    }
+
+    if (seccion == "verFactura") {
+        let c = clientes[filaSeleccionada];
+        if (!c) return;
+        if (!c.pagos) c.pagos = {};
+
+        let filasTabla = "";
+        let fechaActual = new Date(c.fechaInicio + "T00:00:00");
+
+        for (let i = 1; i <= c.semanas; i++) {
+            let mesStr = fechaActual.toLocaleDateString("es-AR", { month: "short" }).replace(".", "");
+            let diaStr = fechaActual.getDate();
+            let fechaFormateada = `${diaStr}-${mesStr}`;
+            let cuotaFormateada = "$" + c.cuota.toLocaleString("es-AR", { minimumFractionDigits: 2 });
+            
+            let estaPagado = c.pagos[i];
+            let claseEstado = estaPagado ? "f-pagado" : "f-pendiente";
+            let textoEstado = estaPagado ? "Pagado" : "Pendiente";
+
+            filasTabla += `
+            <div class="f-fila-pago">
+                <div>${c.semanas === 1 ? 'Única' : i}</div>
+                <div>${cuotaFormateada}</div>
+                <div>${fechaFormateada}</div>
+                <div class="f-estado ${claseEstado}" onclick="togglePagoFactura(${i}, this)">${textoEstado}</div>
+            </div>`;
+            fechaActual.setDate(fechaActual.getDate() + 7);
+        }
+
+        contenido.innerHTML = `
+        <div class="factura-view">
+            <div id="facturaCaptura" style="background:#f8fafc; padding-bottom:25px;">
+                <div class="f-header">
+                    <i class="material-icons-round" onclick="cambiar('semana')" data-html2canvas-ignore="true">arrow_back_ios</i>
+                    <h2>Factura Semanal</h2>
+                    <div style="width:24px" data-html2canvas-ignore="true"></div>
+                </div>
+                <div class="f-contenido">
+                    <div class="f-section-title">Factura Semanal</div>
+                    <div class="f-grid">
+                        <div class="f-cell label">Nombre cliente</div>
+                        <div class="f-cell value">${c.nombre}</div>
+                        <div class="f-cell label">DNI</div>
+                        <div class="f-cell value">${c.dni || "-"}</div>
+                        <div class="f-cell label">Domicilio</div>
+                        <div class="f-cell value">${c.direccion || "-"}</div>
+                    </div>
+                    <div class="f-section-title">Datos de la compra</div>
+                    <div class="f-grid f-compra">
+                        <div class="f-cell label">Producto</div>
+                        <div class="f-cell value">${c.producto}</div>
+                        <div class="f-cell label">Cant. Semanas</div>
+                        <div class="f-cell value">${c.semanas === 1 ? '1 (Cuota única)' : c.semanas}</div>
+                    </div>
+                    <div class="f-tabla-pagos">
+                        <div class="f-fila-pago f-encabezado-pagos">
+                            <div>Semana</div>
+                            <div>Cuota</div>
+                            <div>Fecha</div>
+                            <div>Estado</div>
+                        </div>
+                        ${filasTabla}
+                    </div>
+                    <div class="f-footer-logo">
+                        <h2>PAGOS</h2>
+                        <h2 class="amarillo">SEMANALES</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="f-botones">
+                <button class="f-btn-compartir" onclick="compartirCaptura()">
+                    <i class="material-icons-round">share</i> Compartir
+                </button>
+                <button class="f-btn-volver" onclick="cambiar('semana')">
+                    <i class="material-icons-round">arrow_back</i> Volver
+                </button>
+            </div>
+        </div>`;
+    }
+
+    if (seccion == "configuracion") {
+        document.querySelectorAll(".item").forEach(el => el.classList.remove("active"));
+        contenido.innerHTML = `
+        <div class="full-screen agregar">
+            <h2>Configuración</h2>
+            <p class="subtitulo">Gestioná tus datos guardados en el navegador. Ideal para hacer respaldos o cambiar de dispositivo.</p>
+            <button class="btn-accion" onclick="exportarDatos()" style="background:#28a745; color:white;">
+                <i class="material-icons-round">download</i> Exportar Backup
+            </button>
+            <button class="btn-accion" onclick="triggerImportar()" style="background:#ff9800; color:white; margin-top:15px;">
+                <i class="material-icons-round">upload</i> Importar Backup
+            </button>
+            <input type="file" id="archivoImportar" style="display:none;" accept=".json" onchange="importarDatos(event)">
+            <button class="cancelarCliente" onclick="cambiar('inicio')" style="margin-top:30px;">
+                <i class="material-icons-round">arrow_back</i> Volver al Inicio
+            </button>
+        </div>`;
+    }
+}
+
+// Funciones del resto del código de la App (Se mantienen exactas)
+function renderPedidos() {
+    if(pedidos.length === 0) return '<div style="text-align:center; color:#999; margin-top:20px; font-size:14px;">No hay pedidos registrados</div>';
+    return pedidos.map((p) => {
+        let textEstado = p.estado === 'a_pedir' ? 'A PEDIR' : (p.estado === 'pendiente' ? 'PENDIENTE DE ENTREGA' : 'ENTREGADO');
+        let classEstado = p.estado === 'a_pedir' ? 'estado-a-pedir' : (p.estado === 'pendiente' ? 'estado-pendiente' : 'estado-entregado');
+        let btnEliminar = p.estado === 'entregado' ? `<button class="btn-eliminar-pedido" onclick="eliminarPedido('${p.id}')"><i class="material-icons-round" style="font-size:18px;">delete</i> Eliminar pedido</button>` : '';
+
+        return `
+        <div class="pedido-card pedido-item" data-nombre="${(p.nombre||'').toLowerCase()}" data-producto="${(p.producto||'').toLowerCase()}"
+            oncontextmenu="abrirMenuPedido(event, '${p.id}')"
+            onmousedown="iniciarMantenerPedido('${p.id}', this)"
+            onmouseup="cancelarMantenerPedido()"
+            onmouseleave="cancelarMantenerPedido()"
+            ontouchstart="iniciarMantenerPedido('${p.id}', this)"
+            ontouchend="cancelarMantenerPedido()"
+            ontouchmove="cancelarMantenerPedido()">
+            
+            <div class="pedido-card-row">
+                <span class="pedido-label">Cliente</span>
+                <div class="pedido-valor">${p.nombre}</div>
+            </div>
+            <div class="pedido-card-row">
+                <span class="pedido-label">Producto</span>
+                <div class="pedido-valor">${p.producto}</div>
+            </div>
+            <div class="pedido-card-row" style="margin-bottom:0;">
+                <span class="pedido-label">Estado</span>
+                <div class="estado-pedido ${classEstado}" onclick="toggleEstadoPedido('${p.id}')">${textEstado}</div>
+            </div>
+            ${btnEliminar}
+        </div>`;
+    }).join('');
+}
+
+function toggleEstadoPedido(id) {
+    let p = pedidos.find(x => x.id === id);
+    if(p) {
+        if(p.estado === 'a_pedir') p.estado = 'pendiente';
+        else if(p.estado === 'pendiente') p.estado = 'entregado';
+        else if(p.estado === 'entregado') p.estado = 'a_pedir';
+        
+        localStorage.setItem("pedidos", JSON.stringify(pedidos));
+        let list = document.getElementById("listaPedidos");
+        if(list) { list.innerHTML = renderPedidos(); filtrarPedidos(); }
+    }
+}
+
+function filtrarPedidos() {
+    let txt = document.getElementById("buscadorPedidos").value.toLowerCase();
+    let tarjetas = document.querySelectorAll(".pedido-item");
+    tarjetas.forEach(function(t) {
+        let nombre = t.getAttribute("data-nombre");
+        let prod = t.getAttribute("data-producto");
+        t.style.display = (nombre.includes(txt) || prod.includes(txt)) ? "block" : "none";
+    });
+}
+
+function prepararAgregarPedido() { pedidoEditando = null; cambiar("agregarPedido"); }
+
+function guardarPedidoManual() {
+    let nombre = document.getElementById("nombrePedido").value;
+    let producto = document.getElementById("productoPedido").value;
+    let estado = document.getElementById("estadoPedido").value;
+
+    if (nombre == "" || producto == "") { alert("Completá cliente y producto."); return; }
+
+    if (pedidoEditando) {
+        let p = pedidos.find(x => x.id === pedidoEditando);
+        if (p) { p.nombre = nombre; p.producto = producto; p.estado = estado; }
+    } else {
+        pedidos.push({ id: generarId(), clienteId: null, nombre: nombre, producto: producto, estado: estado });
+    }
+
+    localStorage.setItem("pedidos", JSON.stringify(pedidos));
+    cambiar("pedidos");
+    document.querySelectorAll('.item').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.item')[3].classList.add('active');
+}
+
+function eliminarPedido(id) {
+    if (confirm("¿Estás seguro de que querés eliminar este pedido?")) {
+        pedidos = pedidos.filter(x => x.id !== id);
+        localStorage.setItem("pedidos", JSON.stringify(pedidos));
+        let list = document.getElementById("listaPedidos");
+        if (list) { list.innerHTML = renderPedidos(); filtrarPedidos(); }
+    }
+}
+
+function abrirMenuPedido(event, id) {
+    event.preventDefault(); event.stopPropagation();
+    pedidoSeleccionadoId = id;
+    let p = pedidos.find(x => x.id === id);
+    document.getElementById("nombreMenuPedido").textContent = p.producto;
+    let menu = document.getElementById("menuPedido");
+    menu.style.display = "block";
+    
+    let left = event.pageX; let top = event.pageY;
+    if (left + 220 > window.innerWidth) left = window.innerWidth - 240;
+    menu.style.left = left + "px"; menu.style.top = top + "px";
+}
+
+function iniciarMantenerPedido(id, elemento) {
+    temporizadorPedido = setTimeout(function() {
+        let rect = elemento.getBoundingClientRect();
+        let evento = { pageX: rect.left + 20, pageY: rect.bottom, preventDefault: function() {}, stopPropagation: function() {} };
+        abrirMenuPedido(evento, id);
+    }, 600);
+}
+
+function cancelarMantenerPedido() { clearTimeout(temporizadorPedido); }
+function editarPedidoMenu() { pedidoEditando = pedidoSeleccionadoId; document.getElementById("menuPedido").style.display = "none"; cambiar("agregarPedido"); }
+function eliminarPedidoMenu() { document.getElementById("menuPedido").style.display = "none"; eliminarPedido(pedidoSeleccionadoId); }
+
+function renderFilasConfigPorcentajes() {
+    let contenedor = document.getElementById("contenedorOpcionesPago");
+    if (!contenedor) return;
+    contenedor.innerHTML = opcionesPago.map((op, idx) => `
+        <div style="display:flex; gap:10px; align-items:center; margin-top:10px;">
+            <div style="flex:1;">
+                <label style="margin-top:0;">Semanas ${op.semanas == 1 ? '(Cuota única)' : ''}</label>
+                <input type="number" class="cfg-semanas" value="${op.semanas}" placeholder="Semanas">
+            </div>
+            <div style="flex:1;">
+                <label style="margin-top:0;">Recargo (%)</label>
+                <input type="number" class="cfg-porc" value="${op.porc}" placeholder="%">
+            </div>
+            ${opcionesPago.length > 1 ? `
+            <button onclick="eliminarOpcionPago(${idx})" style="background:#e74c3c; color:white; border:none; border-radius:12px; width:45px; height:52px; margin-top:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <i class="material-icons-round">delete</i>
+            </button>` : ''}
+        </div>
+    `).join('');
+}
+
+function agregarOpcionPago() { opcionesPago.push({ semanas: 4, porc: 0 }); renderFilasConfigPorcentajes(); }
+function eliminarOpcionPago(index) { opcionesPago.splice(index, 1); renderFilasConfigPorcentajes(); }
+function guardarPorcentajes() {
+    let inputsSemanas = document.querySelectorAll(".cfg-semanas");
+    let inputsPorc = document.querySelectorAll(".cfg-porc");
+    let nuevasOpciones = [];
+    for (let i = 0; i < inputsSemanas.length; i++) {
+        let sem = parseInt(inputsSemanas[i].value); let porc = parseFloat(inputsPorc[i].value);
+        if (!isNaN(sem) && sem > 0 && !isNaN(porc)) { nuevasOpciones.push({ semanas: sem, porc: porc }); }
+    }
+    if (nuevasOpciones.length === 0) { alert("Debes ingresar al menos una opción válida."); return; }
+    nuevasOpciones.sort((a, b) => a.semanas - b.semanas);
+    opcionesPago = nuevasOpciones;
+    localStorage.setItem("opcionesPago", JSON.stringify(opcionesPago));
+    cambiar('presupuesto');
+}
+
+function filtrarClientes() {
+    let textoBusqueda = document.getElementById("buscadorClientes").value.toLowerCase();
+    let filas = document.querySelectorAll(".fila-cliente");
+    filas.forEach(function(fila, index) {
+        let cliente = clientes[index]; let coincide = false;
+        if (cliente) {
+            let nombre = (cliente.nombre || "").toLowerCase(); let dni = (cliente.dni || "").toString().toLowerCase(); let producto = (cliente.producto || "").toLowerCase();
+            if (nombre.includes(textoBusqueda) || dni.includes(textoBusqueda) || producto.includes(textoBusqueda)) { coincide = true; }
+        }
+        fila.style.display = coincide ? "grid" : "none";
+    });
+}
+
+async function pegarTexto() {
+    try { const text = await navigator.clipboard.readText(); document.getElementById("producto").value = text; }
+    catch (err) { alert("Tu celular no permitió pegar el texto. Asegurate de darle permisos."); }
+}
+
+function calcular() {
+    const input = document.getElementById("valor"); const modo = document.getElementById("modo").value;
+    const topeSelect = document.getElementById("tope"); const tope = topeSelect ? parseInt(topeSelect.value) : 999;
+    const base = parseFloat(input.value); const producto = document.getElementById("producto").value.trim();
+    const mostrarContado = document.getElementById("mostrarContado").checked;
+
+    if (isNaN(base) || base <= 0) { alert("Por favor, ingresá un valor válido."); document.getElementById("ticketContainer").style.display = "none"; return; }
+
+    let htmlFilas = ""; let textoPlano = "";
+    let opCuotaUnica = opcionesPago.find(o => o.semanas === 1);
+    
+    if (mostrarContado) {
+        let porcContado = opCuotaUnica ? opCuotaUnica.porc : 20;
+        const totalContado = redondearMiles(base * (1 + (porcContado / 100)));
+        htmlFilas += `<div class="ticket-row" style="color:#2ecc71; font-weight:700;"><span>Precio Contado / Cuota Única</span><span>$${totalContado.toLocaleString("es-AR")}</span></div>`;
+        textoPlano += `Precio Contado / Cuota Única: $${totalContado.toLocaleString("es-AR")}\n`;
+    }
+
+    if (modo == "semanal") {
+        opcionesPago.filter(s => s.semanas > 1).forEach(function(s) {
+            if (s.semanas <= tope) {
+                const total = base * (1 + s.porc / 100); const cuota = redondearMiles(total / s.semanas);
+                htmlFilas += `<div class="ticket-row"><span>${s.semanas} Semanas</span><span>$${cuota.toLocaleString("es-AR")}</span></div>`;
+                textoPlano += `${s.semanas} semanas: $${cuota.toLocaleString("es-AR")}\n`;
+            }
+        });
+    }
+
+    if (modo == "quincenal") {
+        opcionesPago.filter(s => s.semanas > 1).forEach(function(s) {
+            if (s.semanas <= tope) {
+                const total = base * (1 + s.porc / 100); const cuota = redondearMiles(total / s.semanas); const quincena = cuota * 2;
+                htmlFilas += `<div class="ticket-row"><span>${s.semanas / 2} Quincenas</span><span>$${quincena.toLocaleString("es-AR")}</span></div>`;
+                textoPlano += `${s.semanas / 2} quincenas: $${quincena.toLocaleString("es-AR")}\n`;
+            }
+        });
+    }
+
+    const hoy = new Date(); const oferta = new Date(hoy); oferta.setDate(hoy.getDate() + 2);
+    const fecha = oferta.toLocaleDateString("es-AR", { day:"numeric", month:"long" });
+
+    const htmlTicket = `
+        <div class="ticket-header">PRODUCTO</div>
+        ${producto ? `<div class="ticket-producto">${producto}</div>` : ""}
+        ${htmlFilas}
+        <div class="ticket-oferta">Oferta valida por tiempo limitado</div>
+        <div class="ticket-logo"><h4>PAGOS</h4><h4 class="amarillo">SEMANALES</h4></div>
+    `;
+
+    document.getElementById("ticketVisual").innerHTML = htmlTicket;
+    document.getElementById("ticketContainer").style.display = "flex";
+    document.getElementById("textoOculto").value = (producto ? `Producto: ${producto}\n\n` : "") + textoPlano + `\nOferta válida hasta: ${fecha}`;
+}
+
+async function compartirTicket() {
+    const btn = document.getElementById("btnCompartirTicket"); const textoOriginal = btn.innerHTML;
+    btn.innerHTML = '<i class="material-icons-round">hourglass_empty</i> Generando...'; btn.style.opacity = "0.7";
+    try {
+        const elemento = document.getElementById("ticketVisual");
+        const canvas = await html2canvas(elemento, { scale:2, useCORS:true, backgroundColor:"#ffffff" });
+        canvas.toBlob(async function(blob) {
+            const file = new File([blob], "Cotizacion.png", { type:"image/png" });
+            if (navigator.canShare && navigator.canShare({ files:[file] })) { await navigator.share({ title:"", files:[file] }); }
+            else { let link = document.createElement("a"); link.download = "Cotizacion.png"; link.href = canvas.toDataURL("image/png"); link.click(); }
+            btn.innerHTML = textoOriginal; btn.style.opacity = "1";
+        }, "image/png");
+    } catch (error) { alert("Hubo un error al generar la imagen."); btn.innerHTML = textoOriginal; btn.style.opacity = "1"; }
+}
+
+function copiarTextoTicket() {
+    const texto = document.getElementById("textoOculto").value;
+    navigator.clipboard.writeText(texto).then(function() {
+        const boton = document.getElementById("copiar"); const original = boton.innerHTML;
+        boton.innerHTML = "<i class='material-icons-round'>check</i> ¡Copiado!";
+        setTimeout(function() { boton.innerHTML = original; }, 1500);
+    }).catch(function() { alert("No se pudo copiar el texto."); });
+}
+
+function limpiarFormulario() {
+    document.getElementById("producto").value = ""; document.getElementById("valor").value = "";
+    document.getElementById("modo").value = "semanal"; actualizarTope();
+    document.getElementById("mostrarContado").checked = false; document.getElementById("ticketContainer").style.display = "none";
+}
+
+function exportarDatos() {
+    const fecha = new Date().toISOString().split("T")[0];
+    const backupData = { clientes: clientes, gastos: gastos, opcionesPago: opcionesPago, ventasFinalizadas: ventasFinalizadas, pedidos: pedidos };
+    const datosStr = JSON.stringify(backupData);
+    const blob = new Blob([datosStr], { type:"application/json" }); const url = URL.createObjectURL(blob);
+    let a = document.createElement("a"); a.href = url; a.download = `Backup_Pagos_${fecha}.json`; a.click(); URL.revokeObjectURL(url);
+}
+
+function triggerImportar() { document.getElementById("archivoImportar").click(); }
+
+function importarDatos(event) {
+    const file = event.target.files[0]; if (!file) return;
+    const lector = new FileReader();
+    lector.onload = function(e) {
+        try {
+            const contenido = JSON.parse(e.target.result);
+            if (confirm("¡Atención! Importar estos datos sobreescribirá tu información actual. ¿Estás seguro?")) {
+                if (Array.isArray(contenido)) { clientes = contenido; gastos = []; ventasFinalizadas = []; pedidos = []; }
+                else if (contenido.clientes) {
+                    clientes = contenido.clientes; gastos = contenido.gastos || []; ventasFinalizadas = contenido.ventasFinalizadas || []; pedidos = contenido.pedidos || [];
+                    if (contenido.opcionesPago) { opcionesPago = contenido.opcionesPago; localStorage.setItem("opcionesPago", JSON.stringify(opcionesPago)); }
+                } else { throw new Error("Formato inválido"); }
+                migrarDatos();
+                localStorage.setItem("clientes", JSON.stringify(clientes)); localStorage.setItem("gastos", JSON.stringify(gastos));
+                localStorage.setItem("ventasFinalizadas", JSON.stringify(ventasFinalizadas)); localStorage.setItem("pedidos", JSON.stringify(pedidos));
+                alert("¡Datos importados con éxito!");
+                cambiar("semana"); document.querySelectorAll(".item").forEach(el => el.classList.remove("active")); document.querySelectorAll(".item")[2].classList.add("active");
+            }
+        } catch (error) { alert("El archivo no tiene el formato correcto o hubo un error al leerlo."); }
+        event.target.value = "";
+    };
+    lector.readAsText(file);
+}
+
+function togglePagoFactura(semanaIndex, elemento) {
+    if (filaSeleccionada === null) return;
+    let cliente = clientes[filaSeleccionada]; cliente.pagos[semanaIndex] = !cliente.pagos[semanaIndex]; localStorage.setItem("clientes", JSON.stringify(clientes));
+    let estaPagado = cliente.pagos[semanaIndex];
+    if (estaPagado) {
+        elemento.classList.remove("f-pendiente"); elemento.classList.add("f-pagado"); elemento.textContent = "Pagado";
+        if (semanaIndex === cliente.semanas) {
+            setTimeout(function() {
+                let respuesta = confirm("¿La venta finalizó correctamente?\n\n[Aceptar] = Sí (Pasar a ventas finalizadas)\n[Cancelar] = No (Solo marcar cuota como pagada)");
+                if (respuesta) {
+                    cliente.fechaFinalizacion = new Date().toLocaleDateString("es-AR");
+                    ventasFinalizadas.push(cliente); clientes.splice(filaSeleccionada, 1);
+                    localStorage.setItem("clientes", JSON.stringify(clientes)); localStorage.setItem("ventasFinalizadas", JSON.stringify(ventasFinalizadas));
+                    alert("La venta se movió a Ventas Finalizadas."); filaSeleccionada = null; cambiar('semana'); 
+                }
+            }, 50);
+        }
+    } else { elemento.classList.remove("f-pagado"); elemento.classList.add("f-pendiente"); elemento.textContent = "Pendiente"; }
+}
+
+async function compartirCaptura() {
+    const btn = document.querySelector(".f-btn-compartir"); const textoOriginal = btn.innerHTML;
+    btn.innerHTML = '<i class="material-icons-round">hourglass_empty</i> Generando...'; btn.style.opacity = "0.7";
+    try {
+        const elemento = document.getElementById("facturaCaptura");
+        const canvas = await html2canvas(elemento, { scale:2, useCORS:true, backgroundColor:"#f8fafc" });
+        canvas.toBlob(async function(blob) {
+            const file = new File([blob], "Factura.png", { type:"image/png" });
+            if (navigator.canShare && navigator.canShare({ files:[file] })) { await navigator.share({ title:"Factura Semanal", files:[file] }); }
+            else { let link = document.createElement("a"); link.download = "Factura.png"; link.href = canvas.toDataURL("image/png"); link.click(); }
+            btn.innerHTML = textoOriginal; btn.style.opacity = "1";
+        }, "image/png");
+    } catch (error) { alert("Error al generar la imagen."); btn.innerHTML = textoOriginal; btn.style.opacity = "1"; }
+}
+
+function redondearMiles(valor) { return Math.ceil(valor / 1000) * 1000; }
+
+function actualizarTope() {
+    const modoSelect = document.getElementById("modo"); if (!modoSelect) return; const modo = modoSelect.value;
+    const tope = document.getElementById("tope"); if (!tope) return; tope.innerHTML = "";
+    opcionesPago.forEach(function(op) {
+        if (op.semanas === 1) return; const opEl = document.createElement("option"); opEl.value = op.semanas;
+        if (modo == "semanal") { opEl.textContent = op.semanas + " semanas"; } else if (modo == "quincenal") { opEl.textContent = (op.semanas / 2) + " quincenas"; }
+        tope.appendChild(opEl);
+    });
+    if (tope.options.length > 0) { tope.value = tope.options[tope.options.length - 1].value; }
+}
+
+function guardarCliente() {
+    let nombre = document.getElementById("nombreCliente").value; let producto = document.getElementById("productoCliente").value; let costo = document.getElementById("costoCliente").value;
+    let cuota = document.getElementById("cuotaCliente").value; let dni = document.getElementById("dniCliente").value; let direccion = document.getElementById("direccionCliente").value;
+    let semanas = Number(document.getElementById("semanasCliente").value); let fechaInicio = document.getElementById("fechaInicioCliente").value;
+
+    if (nombre == "" || producto == "" || cuota == "" || fechaInicio == "") { alert("Completá los datos principales y seleccioná una fecha de inicio."); return; }
+    let clienteId = clienteEditando == -1 ? generarId() : (clientes[clienteEditando].id || generarId());
+
+    let cliente = {
+        id: clienteId, nombre: nombre, dni: dni, direccion: direccion, producto: producto, costo: Number(costo) || 0,
+        semanas: semanas, cuota: Number(cuota), fechaInicio: fechaInicio, estado: clienteEditando == -1 ? false : clientes[clienteEditando].estado, pagos: clienteEditando == -1 ? {} : (clientes[clienteEditando].pagos || {})
+    };
+
+    if (clienteEditando == -1) {
+        clientes.push(cliente);
+        pedidos.push({ id: generarId(), clienteId: cliente.id, nombre: cliente.nombre, producto: cliente.producto, estado: 'a_pedir' });
+        localStorage.setItem("pedidos", JSON.stringify(pedidos));
+    } else {
+        clientes[clienteEditando] = cliente;
+        let p = pedidos.find(x => x.clienteId === cliente.id);
+        if (p) { p.nombre = cliente.nombre; p.producto = cliente.producto; localStorage.setItem("pedidos", JSON.stringify(pedidos)); }
+        clienteEditando = -1;
+    }
+
+    localStorage.setItem("clientes", JSON.stringify(clientes));
+    cambiar("semana"); document.querySelectorAll(".item").forEach(el => el.classList.remove("active")); document.querySelectorAll(".item")[2].classList.add("active");
+}
+
+function cancelarRegistro() { clienteEditando = -1; cambiar("semana"); document.querySelectorAll(".item").forEach(el => el.classList.remove("active")); document.querySelectorAll(".item")[2].classList.add("active"); }
+function cambiarEstado(index, elemento) {
+    clientes[index].estado = !clientes[index].estado; localStorage.setItem("clientes", JSON.stringify(clientes));
+    if (clientes[index].estado) { elemento.classList.remove("rojo"); elemento.classList.add("verde"); }
+    else { elemento.classList.remove("verde"); elemento.classList.add("rojo"); }
+}
+
+function abrirMenuFila(event, index) {
+    event.preventDefault(); filaSeleccionada = index; document.getElementById("nombreMenuFila").textContent = clientes[index].nombre;
+    let menu = document.getElementById("menuFila"); menu.style.display = "block"; menu.style.left = event.pageX + "px"; menu.style.top = event.pageY + "px";
+}
+
+function verFactura() { document.getElementById("menuFila").style.display = "none"; cambiar("verFactura"); }
+
+document.addEventListener("click", function(e) {
+    let menu = document.getElementById("menuFila"); if (menu && !menu.contains(e.target)) { menu.style.display = "none"; }
+    let menuP = document.getElementById("menuPedido"); if (menuP && !menuP.contains(e.target)) { menuP.style.display = "none"; }
+});
+
+function iniciarMantener(index, elemento) { temporizador = setTimeout(function() { let rect = elemento.getBoundingClientRect(); let evento = { pageX: rect.left + 20, pageY: rect.bottom, preventDefault: function() {} }; abrirMenuFila(evento, index); }, 600); }
+function cancelarMantener() { clearTimeout(temporizador); }
+
+function eliminarCliente() {
+    if (filaSeleccionada === null) return; if (!confirm("¿Eliminar este cliente?")) return;
+    clientes.splice(filaSeleccionada, 1); localStorage.setItem("clientes", JSON.stringify(clientes));
+    document.getElementById("menuFila").style.display = "none"; filaSeleccionada = null; cambiar("semana");
+}
+
+function editarCliente() {
+    clienteEditando = filaSeleccionada; cambiar("agregarCliente");
+    setTimeout(function() {
+        document.getElementById("nombreCliente").value = clientes[clienteEditando].nombre; document.getElementById("dniCliente").value = clientes[clienteEditando].dni || "";
+        document.getElementById("direccionCliente").value = clientes[clienteEditando].direccion || ""; document.getElementById("productoCliente").value = clientes[clienteEditando].producto;
+        document.getElementById("costoCliente").value = clientes[clienteEditando].costo || ""; let selSemanas = document.getElementById("semanasCliente"); if (selSemanas) selSemanas.value = clientes[clienteEditando].semanas || 1;
+        document.getElementById("cuotaCliente").value = clientes[clienteEditando].cuota; document.getElementById("fechaInicioCliente").value = clientes[clienteEditando].fechaInicio || "";
+        document.getElementById("menuFila").style.display = "none";
+    }, 50);
+}
+
+</script>
+
+<!-- MENU CLIENTES -->
+<div id="menuFila" class="menu-fila">
+    <div id="nombreMenuFila"></div>
+    <button onclick="verFactura()">Ver factura</button>
+    <button onclick="editarCliente()">Editar</button>
+    <button onclick="eliminarCliente()">Eliminar</button>
+</div>
+
+<!-- MENU PEDIDOS -->
+<div id="menuPedido" class="menu-fila">
+    <div id="nombreMenuPedido"></div>
+    <button onclick="editarPedidoMenu()">Editar</button>
+    <button onclick="eliminarPedidoMenu()">Eliminar</button>
+</div>
+
+</body>
+</html>
