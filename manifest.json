@@ -1,6 +1,6 @@
 {
   "name": "Sistema de Pagos",
-  "short_name": "Pagos",
+  "short_name": "sistema de pagos",
   "start_url": "/usuarios.html",
   "display": "standalone",
   "background_color": "#172554",
