@@ -219,6 +219,18 @@ function generarId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
 
+function actualizarOpcionesCuotas() {
+    let modSelect = document.getElementById("modalidadCliente");
+    let cuotasSelect = document.getElementById("semanasCliente");
+    if (!modSelect || !cuotasSelect) return;
+    
+    let mod = modSelect.value;
+    cuotasSelect.innerHTML = opcionesPago.map(op => {
+        if (op.semanas === 1) return `<option value="1">Cuota única (1 pago)</option>`;
+        return `<option value="${op.semanas}">${mod === 'semanal' ? op.semanas + ' semanas' : (op.semanas / 2) + ' quincenas'}</option>`;
+    }).join('');
+}
+
 // ---------- VARIABLES GLOBALES ----------
 let clientes = JSON.parse(localStorage.getItem("clientes")) || [];
 let gastos = JSON.parse(localStorage.getItem("gastos")) || [];
@@ -251,6 +263,10 @@ function migrarDatos() {
     clientes.forEach(c => {
         if (!c.id) {
             c.id = generarId();
+            clientesActualizados = true;
+        }
+        if (!c.modalidad) {
+            c.modalidad = 'semanal';
             clientesActualizados = true;
         }
     });
@@ -451,7 +467,8 @@ function cambiar(seccion, boton) {
                     </div>
                     ${ventasFinalizadas.length === 0 ? '<div style="padding:20px; text-align:center; color:#999; font-size:14px;">Aún no hay ventas finalizadas</div>' : ''}
                     ${ventasFinalizadas.map(function(v, index) {
-                        let recaudado = v.cuota * v.semanas;
+                        let cuotas = (v.modalidad === 'quincenal' && v.semanas > 1) ? v.semanas / 2 : v.semanas;
+                        let recaudado = v.cuota * cuotas;
                         return `
                         <div class="fila" style="grid-template-columns: 1.3fr 1.3fr 1fr 1fr; font-size:12px;">
                             <div style="font-weight:600;">${v.nombre}</div>
@@ -466,10 +483,8 @@ function cambiar(seccion, boton) {
     }
 
     if (seccion == "agregarCliente") {
-        let opcionesSemanasHTML = opcionesPago.map(op => {
-            let label = op.semanas === 1 ? 'Cuota única (1 pago)' : `${op.semanas} semanas`;
-            return `<option value="${op.semanas}">${label}</option>`;
-        }).join('');
+        let p = clienteEditando == -1 ? null : clientes[clienteEditando];
+        let pModalidad = p && p.modalidad ? p.modalidad : 'semanal';
 
         contenido.innerHTML = `
         <div class="full-screen agregar">
@@ -490,10 +505,14 @@ function cambiar(seccion, boton) {
             <label>Costo del producto (Lo que te costó)</label>
             <input type="number" id="costoCliente" placeholder="$">
             
-            <label>Modalidad de semanas</label>
-            <select id="semanasCliente">
-                ${opcionesSemanasHTML}
+            <label>Modalidad de pagos</label>
+            <select id="modalidadCliente" onchange="actualizarOpcionesCuotas()">
+                <option value="semanal" ${pModalidad === 'semanal' ? 'selected' : ''}>Semanal</option>
+                <option value="quincenal" ${pModalidad === 'quincenal' ? 'selected' : ''}>Quincenal</option>
             </select>
+            
+            <label>Cuotas</label>
+            <select id="semanasCliente"></select>
             
             <label>Valor de cuota</label>
             <input type="number" id="cuotaCliente" placeholder="$">
@@ -504,13 +523,26 @@ function cambiar(seccion, boton) {
             <button class="guardarCliente" onclick="guardarCliente()">Guardar Cliente</button>
             <button class="cancelarCliente" onclick="cancelarRegistro()">Cancelar</button>
         </div>`;
+        
+        setTimeout(() => {
+            actualizarOpcionesCuotas();
+            if (p && p.semanas) {
+                document.getElementById("semanasCliente").value = p.semanas;
+            }
+        }, 0);
     }
 
     if (seccion == "registro") {
-        let ingresosTotales = clientes.reduce((acc, c) => acc + (c.cuota * c.semanas), 0);
+        let ingresosTotales = clientes.reduce((acc, c) => {
+            let cuotas = (c.modalidad === 'quincenal' && c.semanas > 1) ? c.semanas / 2 : c.semanas;
+            return acc + (c.cuota * cuotas);
+        }, 0);
         let costosTotales = clientes.reduce((acc, c) => acc + (c.costo || 0), 0);
         
-        let ingresosFinalizados = ventasFinalizadas.reduce((acc, v) => acc + (v.cuota * v.semanas), 0);
+        let ingresosFinalizados = ventasFinalizadas.reduce((acc, v) => {
+            let cuotas = (v.modalidad === 'quincenal' && v.semanas > 1) ? v.semanas / 2 : v.semanas;
+            return acc + (v.cuota * cuotas);
+        }, 0);
         let costosFinalizados = ventasFinalizadas.reduce((acc, v) => acc + (v.costo || 0), 0);
 
         let ingresosGenerales = ingresosTotales + ingresosFinalizados;
@@ -650,9 +682,13 @@ function cambiar(seccion, boton) {
         if (!c.pagos) c.pagos = {};
 
         let filasTabla = "";
-        let fechaActual = new Date(c.fechaInicio);
+        let fechaActual = new Date(c.fechaInicio + "T00:00:00");
+        let modalidad = c.modalidad || "semanal";
+        let cantidadCuotas = (modalidad === "quincenal" && c.semanas > 1) ? c.semanas / 2 : c.semanas;
+        let diasSumar = modalidad === "quincenal" ? 14 : 7;
 
-        for (let i = 1; i <= c.semanas; i++) {
+
+        for (let i = 1; i <= cantidadCuotas; i++) {
             let mesStr = fechaActual.toLocaleDateString("es-AR", { month: "short" }).replace(".", "");
             let diaStr = fechaActual.getDate();
             let fechaFormateada = `${diaStr}-${mesStr}`;
@@ -664,12 +700,12 @@ function cambiar(seccion, boton) {
 
             filasTabla += `
             <div class="f-fila-pago">
-                <div>${c.semanas === 1 ? 'Única' : i}</div>
+                <div>${cantidadCuotas === 1 ? 'Única' : i}</div>
                 <div>${cuotaFormateada}</div>
                 <div>${fechaFormateada}</div>
                 <div class="f-estado ${claseEstado}" onclick="togglePagoFactura(${i}, this)">${textoEstado}</div>
             </div>`;
-            fechaActual.setDate(fechaActual.getDate() + 7);
+            fechaActual.setDate(fechaActual.getDate() + diasSumar);
         }
 
         contenido.innerHTML = `
@@ -694,13 +730,15 @@ function cambiar(seccion, boton) {
                     <div class="f-grid f-compra">
                         <div class="f-cell label">Producto</div>
                         <div class="f-cell value">${c.producto}</div>
-                        <div class="f-cell label">Cant. Semanas</div>
-                        <div class="f-cell value">${c.semanas === 1 ? '1 (Cuota única)' : c.semanas}</div>
+                        <div class="f-cell label">Modalidad</div>
+                        <div class="f-cell value">${modalidad.charAt(0).toUpperCase() + modalidad.slice(1)}</div>
+                        <div class="f-cell label">Cant. Cuotas</div>
+                        <div class="f-cell value">${cantidadCuotas === 1 ? '1 (Cuota única)' : cantidadCuotas}</div>
                     </div>
                     <div class="f-tabla-pagos">
                         <div class="f-fila-pago f-encabezado-pagos">
-                            <div>Semana</div>
                             <div>Cuota</div>
+                            <div>Monto</div>
                             <div>Fecha</div>
                             <div>Estado</div>
                         </div>
@@ -1228,13 +1266,14 @@ function togglePagoFactura(semanaIndex, elemento) {
     localStorage.setItem("clientes", JSON.stringify(clientes));
     
     let estaPagado = cliente.pagos[semanaIndex];
+    let cantidadCuotas = (cliente.modalidad === "quincenal" && cliente.semanas > 1) ? cliente.semanas / 2 : cliente.semanas;
     
     if (estaPagado) {
         elemento.classList.remove("f-pendiente");
         elemento.classList.add("f-pagado");
         elemento.textContent = "Pagado";
 
-        if (semanaIndex === cliente.semanas) {
+        if (semanaIndex === cantidadCuotas) {
             setTimeout(function() {
                 let respuesta = confirm("¿La venta finalizó correctamente?\n\n[Aceptar] = Sí (Pasar a ventas finalizadas)\n[Cancelar] = No (Solo marcar cuota como pagada)");
                 
@@ -1325,6 +1364,7 @@ function guardarCliente() {
     let cuota = document.getElementById("cuotaCliente").value;
     let dni = document.getElementById("dniCliente").value;
     let direccion = document.getElementById("direccionCliente").value;
+    let modalidad = document.getElementById("modalidadCliente").value;
     let semanas = Number(document.getElementById("semanasCliente").value);
     let fechaInicio = document.getElementById("fechaInicioCliente").value;
 
@@ -1342,6 +1382,7 @@ function guardarCliente() {
         direccion: direccion,
         producto: producto,
         costo: Number(costo) || 0,
+        modalidad: modalidad,
         semanas: semanas,
         cuota: Number(cuota),
         fechaInicio: fechaInicio,
@@ -1474,8 +1515,9 @@ function editarCliente() {
         document.getElementById("productoCliente").value = clientes[clienteEditando].producto;
         document.getElementById("costoCliente").value = clientes[clienteEditando].costo || "";
         
-        let selSemanas = document.getElementById("semanasCliente");
-        if (selSemanas) selSemanas.value = clientes[clienteEditando].semanas || 1;
+        document.getElementById("modalidadCliente").value = clientes[clienteEditando].modalidad || "semanal";
+        actualizarOpcionesCuotas();
+        document.getElementById("semanasCliente").value = clientes[clienteEditando].semanas || 1;
         
         document.getElementById("cuotaCliente").value = clientes[clienteEditando].cuota;
         document.getElementById("fechaInicioCliente").value = clientes[clienteEditando].fechaInicio || "";
